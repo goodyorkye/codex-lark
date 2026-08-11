@@ -1,0 +1,15 @@
+codex-lark
+Copyright 2026 codex-lark contributors
+
+This product includes software adapted from Lark Channel Bridge, licensed
+under the MIT License. Its original copyright notice is preserved in
+THIRD_PARTY_NOTICES.md.
+
+This product includes modified portions of Remodex Desktop IPC modules,
+licensed under the Apache License, Version 2.0. The relevant source files are
+under src/vendor/remodex-ipc and the license is at LICENSES/Apache-2.0.txt.
+The modules were adapted for direct Codex App Server integration, renamed
+imports, opt-out behavior, and codex-lark logging.
+
+Codex, ChatGPT, Feishu, and Lark are trademarks of their respective owners.
+This project is independent and is not endorsed by those owners.

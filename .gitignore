@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+release/
+*.log
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+.npmrc
+
+.DS_Store
+.idea/
+.vscode/
+
+tests-smoke/

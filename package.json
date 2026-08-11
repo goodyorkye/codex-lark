@@ -1,0 +1,97 @@
+{
+  "name": "codex-lark",
+  "version": "0.1.0",
+  "description": "Control Codex Desktop from Feishu/Lark without installing a separate Codex CLI",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codex-lark/codex-lark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codex-lark/codex-lark/issues"
+  },
+  "homepage": "https://github.com/codex-lark/codex-lark#readme",
+  "bin": {
+    "codex-lark": "./bin/codex-lark.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "README.zh-CN.md",
+    "README.zh.md",
+    "docs",
+    "LICENSE",
+    "LICENSES",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "smoke:desktop": "node ./scripts/smoke-desktop.mjs",
+    "smoke:mac-app": "node ./scripts/smoke-macos-app.mjs",
+    "package:mac": "bash ./scripts/package-macos.sh",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit --passWithNoTests",
+    "test:integration": "vitest run tests/integration --passWithNoTests",
+    "test:process": "vitest run tests/process --passWithNoTests",
+    "ci:local": "git diff --check && pnpm test && pnpm typecheck && pnpm build",
+    "ci:platform": "pnpm test && pnpm typecheck && pnpm build",
+    "prepare": "npm run build",
+    "prepublishOnly": "pnpm typecheck && pnpm build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.4.0",
+    "@larksuite/channel": "^0.2.0",
+    "commander": "^12.1.0",
+    "cross-spawn": "^7.0.6",
+    "graceful-fs": "^4.2.11",
+    "proper-lockfile": "^4.1.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/graceful-fs": "^4.1.9",
+    "@types/node": "^22.10.0",
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/qrcode": "^1.5.5",
+    "postject": "^1.0.0-alpha.6",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios": "^1.18.0",
+      "protobufjs": "^7.6.5",
+      "qs": "^6.15.2",
+      "ws": "^8.21.0"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "protobufjs"
+    ]
+  },
+  "keywords": [
+    "feishu",
+    "lark",
+    "codex",
+    "codex-desktop",
+    "chatgpt-desktop",
+    "channel",
+    "bridge"
+  ],
+  "license": "MIT"
+}

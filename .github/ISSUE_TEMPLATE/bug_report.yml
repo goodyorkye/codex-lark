@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible codex-lark problem without private task data.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include App Secrets, tokens, task transcripts, or private local paths. Report security issues privately.
+  - type: input
+    id: version
+    attributes:
+      label: codex-lark version
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: ChatGPT/Codex Desktop version
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and architecture
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use placeholders for task names, paths, IDs, and content.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: ipc
+    attributes:
+      label: Does it still happen with CODEX_LARK_DESKTOP_IPC=0?
+      options: [Yes, No, Not tested]
+    validations:
+      required: true

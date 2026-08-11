@@ -1,0 +1,612 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`run card renderer snapshots > collapses consecutive tools while preserving the latest running tool 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "blue",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "- ✅ **Bash** — pwd
+- ✅ **Read** — /repo/a.ts",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "☕ **2 个工具调用**",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+      {
+        "border": {
+          "color": "grey",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "**File** \`/repo/a.ts\`
+
+_运行中…_",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": true,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "⏳ **Edit** — /repo/a.ts",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+      {
+        "content": "🧰 正在调用工具",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "cmd": "stop",
+            },
+          },
+        ],
+        "tag": "button",
+        "text": {
+          "content": "⏹ 终止",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": true,
+    "summary": {
+      "content": "正在调用工具",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > collapses consecutive tools while preserving the latest running tool 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "blue",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "- ✅ **Bash** — pwd
+- ✅ **Read** — /repo/a.ts
+- ✅ **Edit** — /repo/a.ts",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "☕ **3 个工具调用（已结束）**",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已完成",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders active and completed thinking 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "grey",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "checking options",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": true,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "🧠 **思考中**",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+      {
+        "content": "🧠 正在思考",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "cmd": "stop",
+            },
+          },
+        ],
+        "tag": "button",
+        "text": {
+          "content": "⏹ 终止",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": true,
+    "summary": {
+      "content": "思考中",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders active and completed thinking 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "grey",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "checking options",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "🧠 **思考完成，点击查看**",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+      {
+        "content": "final answer",
+        "tag": "markdown",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已完成",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders done, error, interrupted, and idle-timeout terminal states 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "content": "_（未返回内容）_",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已完成",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders done, error, interrupted, and idle-timeout terminal states 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "content": "⚠️ agent 失败：process failed",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "出错",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders done, error, interrupted, and idle-timeout terminal states 3`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "content": "partial",
+        "tag": "markdown",
+      },
+      {
+        "content": "_⏹ 已被中断_",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已中断",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders done, error, interrupted, and idle-timeout terminal states 4`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "content": "partial",
+        "tag": "markdown",
+      },
+      {
+        "content": "_⏱ 15 分钟无响应,已自动终止_",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已超时",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders initial running state 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "content": "🧠 正在思考",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "cmd": "stop",
+            },
+          },
+        ],
+        "tag": "button",
+        "text": {
+          "content": "⏹ 终止",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": true,
+    "summary": {
+      "content": "思考中",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders markdown text mode without card-only controls 1`] = `
+"Answer
+
+> ✅ **Bash** — pwd
+
+Done
+
+_✍️ 正在输出…_"
+`;
+
+exports[`run card renderer snapshots > renders markdown text mode without card-only controls 2`] = `
+"Answer
+
+> ✅ **Bash** — pwd
+
+Done
+
+_⏹ 已被中断_"
+`;
+
+exports[`run card renderer snapshots > renders markdown text mode without card-only controls 3`] = `
+"Answer
+
+> ✅ **Bash** — pwd
+
+Done
+
+_⏱ 10 分钟无响应,已自动终止_"
+`;
+
+exports[`run card renderer snapshots > renders markdown text mode without card-only controls 4`] = `"⚠️ agent 失败:process failed"`;
+
+exports[`run card renderer snapshots > renders tool running, done, and error states 1`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "grey",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "**Command**
+\`\`\`bash
+pwd
+\`\`\`
+
+_运行中…_",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "⏳ **Bash** — pwd",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+      {
+        "content": "🧰 正在调用工具",
+        "tag": "markdown",
+        "text_size": "notation",
+      },
+      {
+        "behaviors": [
+          {
+            "type": "callback",
+            "value": {
+              "cmd": "stop",
+            },
+          },
+        ],
+        "tag": "button",
+        "text": {
+          "content": "⏹ 终止",
+          "tag": "plain_text",
+        },
+        "type": "danger",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": true,
+    "summary": {
+      "content": "正在调用工具",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders tool running, done, and error states 2`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "grey",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "**Command**
+\`\`\`bash
+pwd
+\`\`\`
+
+**Output**
+\`\`\`
+/repo
+\`\`\`",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "✅ **Bash** — pwd",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已完成",
+    },
+  },
+  "schema": "2.0",
+}
+`;
+
+exports[`run card renderer snapshots > renders tool running, done, and error states 3`] = `
+{
+  "body": {
+    "elements": [
+      {
+        "border": {
+          "color": "red",
+          "corner_radius": "5px",
+        },
+        "elements": [
+          {
+            "content": "**File** \`/missing.ts\`
+
+**Error**
+\`\`\`
+ENOENT
+\`\`\`",
+            "tag": "markdown",
+            "text_size": "notation",
+          },
+        ],
+        "expanded": false,
+        "header": {
+          "icon": {
+            "size": "16px 16px",
+            "tag": "standard_icon",
+            "token": "down-small-ccm_outlined",
+          },
+          "icon_expanded_angle": -180,
+          "icon_position": "follow_text",
+          "title": {
+            "content": "❌ **Read** — /missing.ts",
+            "tag": "markdown",
+          },
+          "vertical_align": "center",
+        },
+        "padding": "8px 8px 8px 8px",
+        "tag": "collapsible_panel",
+        "vertical_spacing": "8px",
+      },
+    ],
+  },
+  "config": {
+    "streaming_mode": false,
+    "summary": {
+      "content": "已完成",
+    },
+  },
+  "schema": "2.0",
+}
+`;
