@@ -90,6 +90,7 @@ import type { WorkspaceStore } from '../workspace/store';
 import { createBoundChat, defaultChatName } from '../bot/group';
 import { fetchKnownChats, type KnownChat } from '../bot/lark-info';
 import { applyLarkCliIdentityPolicy, hasStructuredLarkCliUserAuth } from '../lark-cli/identity-policy';
+import { listDesktopProjects } from '../codex/desktop-projects';
 
 export interface Controls {
   profile: string;
@@ -143,6 +144,7 @@ export interface CommandContext {
     options: ListCodexThreadHistoryOptions,
   ) => Promise<CodexThreadHistoryEntry[]>;
   claudeHistoryProvider?: (cwd: string, limit: number) => Promise<SessionSummary[]>;
+  desktopProjectsProvider?: () => Promise<CodexProjectSummary[]>;
   /** Set when invoked from a CardKit 2.0 form submit. Keys are input `name`s. */
   formValue?: Record<string, unknown>;
   /** True when this invocation came from a card button click rather than a
@@ -347,25 +349,14 @@ async function handleNew(args: string, ctx: CommandContext): Promise<void> {
   await reply(ctx, wasRunning ? '已中断当前任务并开始新会话。' : '已开始新会话。');
 }
 
-async function handleProjects(_args: string, ctx: CommandContext): Promise<void> {
-  if (!ctx.agent.listThreads) {
-    await reply(ctx, '当前 Codex 后端不支持项目列表。');
-    return;
-  }
-  const threads = await ctx.agent.listThreads({ limit: 200 });
-  const grouped = new Map<string, CodexProjectSummary>();
-  for (const thread of threads) {
-    if (!thread.cwd) continue;
-    const existing = grouped.get(thread.cwd);
-    const updatedAt = typeof thread.updatedAt === 'number' ? thread.updatedAt : undefined;
-    grouped.set(thread.cwd, {
-      cwd: thread.cwd,
-      taskCount: (existing?.taskCount ?? 0) + 1,
-      updatedAt: Math.max(existing?.updatedAt ?? 0, updatedAt ?? 0) || undefined,
-    });
-  }
-  const projects = [...grouped.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-  await sendCodexCard(ctx, projectsCard(projects, effectiveWorkspaceCwd(ctx)));
+async function handleProjects(args: string, ctx: CommandContext): Promise<void> {
+  const pageMatch = /^page\s+(\d+)$/.exec(args.trim());
+  const page = pageMatch ? Number(pageMatch[1]) : 1;
+  const codexHome = ctx.controls.profileConfig.codex?.codexHome;
+  const projects = ctx.desktopProjectsProvider
+    ? await ctx.desktopProjectsProvider()
+    : await listDesktopProjects(codexHome ? { codexHome } : {});
+  await sendCodexCard(ctx, projectsCard(projects, effectiveWorkspaceCwd(ctx), page));
 }
 
 async function handleProject(args: string, ctx: CommandContext): Promise<void> {

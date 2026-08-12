@@ -2,7 +2,10 @@ import { basename } from 'node:path';
 import type { CodexModel, CodexThread } from '../codex/app-server/protocol';
 
 export interface CodexProjectSummary {
+  id?: string;
+  name?: string;
   cwd: string;
+  rootPaths?: string[];
   taskCount: number;
   updatedAt?: number;
 }
@@ -84,28 +87,53 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
   ]);
 }
 
-export function projectsCard(projects: CodexProjectSummary[], currentCwd?: string): object {
-  const visible = projects.slice(0, 20);
+export function projectsCard(
+  projects: CodexProjectSummary[],
+  currentCwd?: string,
+  requestedPage = 1,
+): object {
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(projects.length / pageSize));
+  const page = Math.min(pageCount, Math.max(1, Math.trunc(requestedPage) || 1));
+  const visible = projects.slice((page - 1) * pageSize, page * pageSize);
+  const rows: object[] = visible.map((project) => {
+    const roots = project.rootPaths?.length ? project.rootPaths : [project.cwd];
+    const selected = roots.includes(currentCwd ?? '');
+    const detail = roots.length > 1
+      ? `${roots.length} 个目录 · ${project.taskCount} 个任务`
+      : `${escapeMd(project.cwd)} · ${project.taskCount} 个任务`;
+    return {
+      tag: 'column_set',
+      flex_mode: 'none',
+      columns: [{
+        tag: 'column',
+        width: 'weighted',
+        weight: 1,
+        elements: [{
+          tag: 'markdown',
+          content: `${selected ? '📍 ' : ''}**${escapeMd(project.name || basename(project.cwd) || project.cwd)}**\n${detail}`,
+        }],
+      }, {
+        tag: 'column',
+        width: 'auto',
+        elements: [button('选择', 'project.use', project.cwd)],
+      }],
+    };
+  });
+  if (projects.length && pageCount > 1) {
+    rows.push({
+      tag: 'markdown',
+      content: `第 ${page}/${pageCount} 页 · 共 ${projects.length} 个项目`,
+    });
+    rows.push(buttonRow([
+      ...(page > 1 ? [actionButton('上一页', 'projects.page', 'default', String(page - 1))] : []),
+      ...(page < pageCount ? [actionButton('下一页', 'projects.page', 'primary', String(page + 1))] : []),
+    ]));
+  }
   return card(
-    'Codex 项目',
+    '项目列表',
     (projects.length
-      ? appendOverflow(visible.map((project) => ({
-          tag: 'column_set',
-          flex_mode: 'none',
-          columns: [{
-            tag: 'column',
-            width: 'weighted',
-            weight: 1,
-            elements: [{
-              tag: 'markdown',
-              content: `${project.cwd === currentCwd ? '📍 ' : ''}**${escapeMd(basename(project.cwd) || project.cwd)}**\n${escapeMd(project.cwd)} · ${project.taskCount} 个任务`,
-            }],
-          }, {
-            tag: 'column',
-            width: 'auto',
-            elements: [button('打开', 'project.use', project.cwd)],
-          }],
-        })), projects.length, visible.length)
+      ? rows
       : [{ tag: 'markdown', content: '还没有 Codex 项目。先在 Mac 的 Codex Desktop 中打开一个目录即可。' }])
       .concat([navigationActions('tasks.recent')]),
   );

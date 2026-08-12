@@ -19,6 +19,24 @@ afterEach(async () => {
 });
 
 describe('Codex phone navigation commands', () => {
+  it('uses Desktop project order and exposes every project through pages', async () => {
+    const h = await createHarness();
+
+    await expect(h.run('/projects')).resolves.toBe(true);
+
+    const firstPage = JSON.stringify(h.channel.sent.at(-1)?.content);
+    expect(firstPage).toContain('项目列表');
+    expect(firstPage.indexOf('Desktop 项目 B')).toBeLessThan(firstPage.indexOf('Desktop 项目 A'));
+    expect(firstPage).toContain('第 1/2 页');
+    expect(firstPage).toContain('下一页');
+    expect(firstPage).not.toContain('Desktop 项目 11');
+
+    await expect(h.run('/projects page 2')).resolves.toBe(true);
+    const secondPage = JSON.stringify(h.channel.sent.at(-1)?.content);
+    expect(secondPage).toContain('Desktop 项目 11');
+    expect(secondPage).toContain('上一页');
+  });
+
   it('lists recent tasks across projects in activity order', async () => {
     const h = await createHarness();
 
@@ -107,6 +125,17 @@ async function createHarness(): Promise<{
     processId: 'proc-1',
   } satisfies Controls;
   const activeRuns = new ActiveRuns();
+  const desktopProjects = [
+    { id: 'project-b', name: 'Desktop 项目 B', cwd: projectBRealpath, rootPaths: [projectBRealpath], taskCount: 1 },
+    { id: 'project-a', name: 'Desktop 项目 A', cwd: tmp.workspace, rootPaths: [tmp.workspace], taskCount: 1 },
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `project-${index + 2}`,
+      name: `Desktop 项目 ${index + 2}`,
+      cwd: join(tmp.root, `desktop-project-${index + 2}`),
+      rootPaths: [join(tmp.root, `desktop-project-${index + 2}`)],
+      taskCount: 0,
+    })),
+  ];
   const run = (content: string): Promise<boolean> => tryHandleCommand({
     channel: channel as unknown as CommandContext['channel'],
     msg: message(content),
@@ -117,6 +146,7 @@ async function createHarness(): Promise<{
     agent,
     activeRuns,
     controls,
+    desktopProjectsProvider: async () => desktopProjects,
   });
   cleanups.push(async () => {
     await Promise.all([sessions.flush(), workspaces.flush()]);

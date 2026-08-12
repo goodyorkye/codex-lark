@@ -12,8 +12,11 @@ import {
 
 describe('Codex navigation cards', () => {
   it('renders project and task callbacks understood by the dispatcher', () => {
-    expect(JSON.stringify(projectsCard([{ cwd: '/tmp/demo', taskCount: 2 }], '/tmp/demo')))
-      .toContain('project.use');
+    const projects = JSON.stringify(projectsCard([{ cwd: '/tmp/demo', taskCount: 2 }], '/tmp/demo'));
+    expect(projects).toContain('项目列表');
+    expect(projects).toContain('project.use');
+    expect(projects).toContain('选择');
+    expect(projects).not.toContain('打开');
     expect(JSON.stringify(tasksCard([{ id: 'thread-1', cwd: '/tmp/demo', preview: 'Fix tests' }], 'thread-1')))
       .toContain('task.use');
   });
@@ -35,11 +38,17 @@ describe('Codex navigation cards', () => {
     expect(JSON.stringify(detail)).toContain('你好，我来处理');
   });
 
-  it('caps large lists to stay inside Feishu card limits', () => {
+  it('paginates large project lists to stay inside Feishu card limits', () => {
     const projects = Array.from({ length: 25 }, (_, i) => ({ cwd: `/tmp/p-${i}`, taskCount: 1 }));
-    const rendered = JSON.stringify(projectsCard(projects));
-    expect(rendered).toContain('另有 5 项未显示');
+    const rendered = JSON.stringify(projectsCard(projects, undefined, 1));
+    expect(rendered).toContain('第 1/3 页');
+    expect(rendered).toContain('下一页');
+    expect(rendered).not.toContain('/tmp/p-10');
     expect(rendered).not.toContain('/tmp/p-24');
+    const lastPage = JSON.stringify(projectsCard(projects, undefined, 3));
+    expect(lastPage).toContain('/tmp/p-24');
+    expect(lastPage).toContain('上一页');
+    expect(lastPage).not.toContain('下一页');
     expect(collectTags(projectsCard(projects))).not.toContain('note');
   });
 
