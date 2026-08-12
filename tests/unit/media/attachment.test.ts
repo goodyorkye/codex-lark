@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  attachmentOmissionNotice,
   normalizeAttachments,
   safeExtensionForMime,
   type AttachmentCandidate,
@@ -30,7 +31,7 @@ describe('attachment policy normalization', () => {
     ]);
   });
 
-  it('rejects SVG and unknown images while skipping sticker/audio/video by default', () => {
+  it('accepts audio while rejecting unsupported images and skipping sticker/video', () => {
     const out = normalizeAttachments([
       candidate({ kind: 'image', mime: 'image/svg+xml', hash: 'svg' }),
       candidate({ kind: 'image', mime: 'application/octet-stream', hash: 'unknown' }),
@@ -43,7 +44,7 @@ describe('attachment policy normalization', () => {
       ['image', 'rejected', 'unsupported-image-mime'],
       ['image', 'rejected', 'unsupported-image-mime'],
       ['sticker', 'skipped', 'sticker'],
-      ['audio', 'skipped', 'unsupported-kind'],
+      ['audio', 'accepted', undefined],
       ['video', 'skipped', 'unsupported-kind'],
     ]);
   });
@@ -86,8 +87,24 @@ describe('attachment policy normalization', () => {
     expect(safeExtensionForMime('image/png')).toBe('png');
     expect(safeExtensionForMime('image/webp')).toBe('webp');
     expect(safeExtensionForMime('image/gif')).toBe('gif');
+    expect(safeExtensionForMime('audio/ogg')).toBe('ogg');
+    expect(safeExtensionForMime('audio/ogg; codecs=opus')).toBe('ogg');
+    expect(safeExtensionForMime('audio/mpeg')).toBe('mp3');
     expect(safeExtensionForMime('application/zip')).toBe('zip');
     expect(safeExtensionForMime('application/x-sh')).toBe('bin');
+  });
+
+  it('warns when an agent cannot receive an attachment instead of dropping it silently', () => {
+    const attachments = normalizeAttachments([
+      candidate({ kind: 'audio', mime: 'audio/ogg', hash: 'audio' }),
+      candidate({ kind: 'file', mime: 'text/plain', hash: 'file' }),
+      candidate({ kind: 'video', mime: 'video/mp4', hash: 'video' }),
+    ]);
+
+    expect(attachmentOmissionNotice(attachments, 'codex')).toBe(
+      '⚠️ 1 个文件、1 个视频未能提交给 Codex，其他内容仍会正常发送。',
+    );
+    expect(attachmentOmissionNotice(attachments.slice(0, 2), 'claude')).toBeUndefined();
   });
 });
 

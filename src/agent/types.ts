@@ -45,6 +45,7 @@ export interface AgentRunOptions {
   model?: string;
   reasoningEffort?: string;
   images?: readonly string[];
+  audios?: readonly string[];
   sandbox?: CodexSandboxMode;
   permissionMode?: ClaudePermissionMode;
   /**

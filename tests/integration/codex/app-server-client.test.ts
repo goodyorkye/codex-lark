@@ -73,6 +73,8 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       cwd: '/tmp/project',
       model: 'gpt-test',
       reasoningEffort: 'high',
+      images: ['/tmp/example.png'],
+      audios: ['/tmp/example.ogg'],
     });
     const events: AgentEvent[] = [];
     for await (const event of run.events) events.push(event);
@@ -94,7 +96,11 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       name: 'hello',
     });
     expect(requests.find((message) => message.method === 'turn/start')?.params).toMatchObject({
-      input: [{ type: 'text', text: 'hello' }],
+      input: [
+        { type: 'text', text: 'hello' },
+        { type: 'localImage', path: '/tmp/example.png' },
+        { type: 'localAudio', path: '/tmp/example.ogg' },
+      ],
       model: 'gpt-test',
       reasoningEffort: 'high',
     });

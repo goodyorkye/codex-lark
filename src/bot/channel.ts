@@ -51,6 +51,7 @@ import { resolveAppSecret } from '../config/secret-resolver';
 import { log, reportMetric, withTrace } from '../core/logger';
 import { MediaCache, type LocalAttachment } from '../media/cache';
 import {
+  attachmentOmissionNotice,
   toPolicyAttachment,
   toPromptAttachment,
 } from '../media/attachment';
@@ -755,6 +756,18 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
     replyTo: lastMsg.messageId,
     ...(mode === 'topic' && threadId ? { replyInThread: true } : {}),
   };
+
+  const omissionNotice = attachmentOmissionNotice(
+    attachments,
+    controls.profileConfig.agentKind,
+  );
+  if (omissionNotice) {
+    await channel.send(chatId, { text: omissionNotice }, sendOpts).catch((error) => {
+      log.warn('attachment', 'omission-notice-failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 
   const accessDecision =
     firstMsg.chatType === 'p2p'

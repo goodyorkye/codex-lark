@@ -23,6 +23,7 @@ export interface SubmitRunInput {
   model?: string;
   reasoningEffort?: string;
   images?: readonly string[];
+  audios?: readonly string[];
   stopGraceMs?: number;
   nowait?: boolean;
   observability?: {
@@ -103,6 +104,7 @@ export class RunExecutor {
       model: input.model,
       reasoningEffort: input.reasoningEffort,
       images: input.images,
+      audios: input.audios,
       sandbox: input.policy.sandbox,
       permissionMode: input.policy.permissionMode,
       stopGraceMs: input.stopGraceMs,

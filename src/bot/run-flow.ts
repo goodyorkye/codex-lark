@@ -152,6 +152,13 @@ export async function startRunFlow(input: StartRunFlowInput): Promise<StartRunFl
               .map((attachment) => attachment.path)
               .filter((path): path is string => Boolean(path))
           : undefined,
+      audios:
+        input.capability.agentId === 'codex'
+          ? policy.attachments
+              .filter((attachment) => attachment.kind === 'audio' && attachment.decision === 'accepted')
+              .map((attachment) => attachment.path)
+              .filter((path): path is string => Boolean(path))
+          : undefined,
       stopGraceMs: input.stopGraceMs,
       observability: input.observability,
     });

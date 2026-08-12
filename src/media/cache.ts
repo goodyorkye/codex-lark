@@ -72,7 +72,7 @@ export class MediaCache {
       log.info('media', 'skip', { reason: 'sticker', fileKey: r.fileKey });
       return null;
     }
-    const kind: AttachmentKind = r.type;
+    const resourceKind: AttachmentKind = r.type;
     const tmpPath = join(
       this.rootDir,
       `.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -95,7 +95,8 @@ export class MediaCache {
 
     const tmpStat = await stat(tmpPath);
     const hash = await hashFile(tmpPath);
-    const mime = contentType ?? defaultMime(kind);
+    const kind = kindForDownloadedResource(resourceKind, contentType);
+    const mime = effectiveMime(kind, contentType);
     const ext = safeExtensionForMime(mime);
     const absPath = join(this.rootDir, `${hash}.${ext}`);
     try {
@@ -122,6 +123,26 @@ export class MediaCache {
     });
     return candidate;
   }
+}
+
+function kindForDownloadedResource(
+  resourceKind: AttachmentKind,
+  contentType: string | undefined,
+): AttachmentKind {
+  if (resourceKind !== 'file') return resourceKind;
+  const mime = normalizedMime(contentType);
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime.startsWith('video/')) return 'video';
+  return resourceKind;
+}
+
+function effectiveMime(kind: AttachmentKind, contentType: string | undefined): string {
+  const mime = normalizedMime(contentType);
+  return !mime || mime === 'application/octet-stream' ? defaultMime(kind) : mime;
+}
+
+function normalizedMime(contentType: string | undefined): string {
+  return contentType?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
 }
 
 /** Delete files under the media cache whose mtime is older than maxAgeMs. */

@@ -46,6 +46,15 @@ const IMAGE_MIME_EXT: Record<string, string> = {
 
 const MIME_EXT: Record<string, string> = {
   ...IMAGE_MIME_EXT,
+  'audio/aac': 'aac',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/ogg': 'ogg',
+  'audio/opus': 'opus',
+  'audio/wav': 'wav',
+  'audio/x-m4a': 'm4a',
+  'audio/x-wav': 'wav',
+  'application/ogg': 'ogg',
   'application/pdf': 'pdf',
   'application/zip': 'zip',
   'text/plain': 'txt',
@@ -90,7 +99,8 @@ export function normalizeAttachments(
 }
 
 export function safeExtensionForMime(mime: string): string {
-  return MIME_EXT[mime.toLowerCase()] ?? 'bin';
+  const normalized = mime.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  return MIME_EXT[normalized] ?? 'bin';
 }
 
 export function toPolicyAttachment(attachment: NormalizedAttachment): PolicyAttachment {
@@ -120,13 +130,37 @@ export function toPromptAttachment(attachment: NormalizedAttachment): BridgeProm
   };
 }
 
+export function attachmentOmissionNotice(
+  attachments: readonly NormalizedAttachment[],
+  agentId: 'claude' | 'codex',
+): string | undefined {
+  const omitted = attachments.filter((attachment) =>
+    attachment.decision !== 'accepted'
+      || (agentId === 'codex' && attachment.kind !== 'image' && attachment.kind !== 'audio'));
+  if (omitted.length === 0) return undefined;
+  const labels: Record<AttachmentKind, string> = {
+    image: '图片',
+    file: '文件',
+    audio: '音频',
+    video: '视频',
+    sticker: '贴纸',
+  };
+  const counts = new Map<string, number>();
+  for (const attachment of omitted) {
+    const label = labels[attachment.kind];
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  const summary = [...counts].map(([label, count]) => `${count} 个${label}`).join('、');
+  return `⚠️ ${summary}未能提交给 ${agentId === 'codex' ? 'Codex' : 'Claude'}，其他内容仍会正常发送。`;
+}
+
 function earlyDecision(
   candidate: AttachmentCandidate,
 ): Pick<NormalizedAttachment, 'decision' | 'rejectionReason'> | undefined {
   if (candidate.kind === 'sticker') {
     return { decision: 'skipped', rejectionReason: 'sticker' };
   }
-  if (candidate.kind === 'audio' || candidate.kind === 'video') {
+  if (candidate.kind === 'video') {
     return { decision: 'skipped', rejectionReason: 'unsupported-kind' };
   }
   if (candidate.kind === 'image' && !IMAGE_MIME_EXT[candidate.mime.toLowerCase()]) {

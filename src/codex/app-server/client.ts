@@ -46,6 +46,7 @@ export interface StartTurnOptions {
   threadId: string;
   text: string;
   images?: readonly string[];
+  audios?: readonly string[];
   cwd?: string;
   model?: string;
   reasoningEffort?: string;
@@ -242,6 +243,7 @@ export class CodexAppServerClient extends EventEmitter {
   async startTurn(options: StartTurnOptions): Promise<{ id: string; status?: string }> {
     const input: Array<Record<string, unknown>> = [{ type: 'text', text: options.text }];
     for (const path of options.images ?? []) input.push({ type: 'localImage', path });
+    for (const path of options.audios ?? []) input.push({ type: 'localAudio', path });
     const result = await this.request<{ turn: { id: string; status?: string } }>('turn/start', {
       threadId: options.threadId,
       input,

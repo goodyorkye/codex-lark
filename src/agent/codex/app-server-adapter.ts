@@ -175,6 +175,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           threadId: thread.id,
           text: projection.text,
           images: options.images,
+          audios: options.audios,
           cwd: options.cwd,
           model: options.model,
           reasoningEffort: options.reasoningEffort,

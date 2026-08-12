@@ -19,7 +19,7 @@ describe('attachment run flow', () => {
     await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
   });
 
-  it('passes accepted image attachment paths to Codex adapter image args only', async () => {
+  it('passes accepted image and audio paths to native Codex inputs only', async () => {
     const h = await createHarness();
 
     const result = await startRunFlow({
@@ -36,6 +36,12 @@ describe('attachment run flow', () => {
         {
           kind: 'file',
           path: '/media/file.txt',
+          requiredness: 'optional',
+          decision: 'accepted',
+        },
+        {
+          kind: 'audio',
+          path: '/media/audio.ogg',
           requiredness: 'optional',
           decision: 'accepted',
         },
@@ -59,6 +65,7 @@ describe('attachment run flow', () => {
     expect(result.ok).toBe(true);
     expect(h.agent.runOptions[0]).toMatchObject({
       images: ['/media/image.png'],
+      audios: ['/media/audio.ogg'],
     });
   });
 });

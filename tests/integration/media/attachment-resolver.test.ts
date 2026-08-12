@@ -52,6 +52,24 @@ describe('hash media attachment resolver', () => {
     expect(source).toContain('createReadStream(path)');
   });
 
+  it('recognizes audio MIME returned for a generic Feishu file resource', async () => {
+    const root = await tempDir();
+    const bytes = Buffer.from('audio-bytes');
+    const cache = new MediaCache(fakeChannel(bytes, 'audio/ogg; codecs=opus'), root);
+
+    const [attachment] = await cache.resolve([{
+      messageId: 'om_audio',
+      resource: { type: 'file', fileKey: 'audio_key', fileName: 'voice.ogg' } as never,
+    }]);
+
+    expect(attachment).toMatchObject({
+      kind: 'audio',
+      mime: 'audio/ogg',
+      decision: 'accepted',
+    });
+    expect(attachment?.absPath).toMatch(/\.ogg$/);
+  });
+
   it('garbage-collects old cache files by TTL', async () => {
     const root = await tempDir();
     const oldPath = join(root, 'old.bin');
@@ -114,7 +132,7 @@ describe('hash media attachment resolver', () => {
   });
 });
 
-function fakeChannel(bytes: Buffer) {
+function fakeChannel(bytes: Buffer, contentType = 'image/png') {
   return {
     async downloadResourceToFile(
       _messageId: string,
@@ -123,7 +141,7 @@ function fakeChannel(bytes: Buffer) {
       destPath: string,
     ) {
       await writeFile(destPath, bytes);
-      return { contentType: 'image/png', bytesWritten: bytes.length };
+      return { contentType, bytesWritten: bytes.length };
     },
   } as never;
 }
