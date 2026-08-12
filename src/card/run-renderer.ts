@@ -88,6 +88,62 @@ export function renderApprovalCard(
   };
 }
 
+/**
+ * Optimistically remove one approval's buttons while its decision is being
+ * delivered to Codex. The rest of the card is preserved, which matters when
+ * the approval panel is embedded in a streaming run card instead of sent as
+ * a standalone card.
+ */
+export function markApprovalSubmitting(
+  card: object,
+  approvalId: string,
+  decision: 'accept' | 'acceptForSession' | 'decline',
+): object {
+  const status = noteMd(`⏳ ${approvalDecisionLabel(decision)}，正在等待 Codex 确认…`);
+
+  const visit = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      const next: unknown[] = [];
+      let removedApprovalButton = false;
+      for (const item of value) {
+        if (isApprovalButtonFor(item, approvalId)) {
+          removedApprovalButton = true;
+          continue;
+        }
+        next.push(visit(item));
+      }
+      if (removedApprovalButton) next.push(status);
+      return next;
+    }
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, child]) => [key, visit(child)]),
+    );
+  };
+
+  return visit(card) as object;
+}
+
+function isApprovalButtonFor(value: unknown, approvalId: string): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const button = value as {
+    tag?: unknown;
+    behaviors?: Array<{ value?: { cmd?: unknown; arg?: unknown } }>;
+  };
+  if (button.tag !== 'button' || !Array.isArray(button.behaviors)) return false;
+  return button.behaviors.some(({ value: action }) =>
+    typeof action?.cmd === 'string' &&
+    action.cmd.startsWith('approval.') &&
+    action.arg === approvalId,
+  );
+}
+
+function approvalDecisionLabel(decision: 'accept' | 'acceptForSession' | 'decline'): string {
+  if (decision === 'decline') return '正在拒绝';
+  if (decision === 'acceptForSession') return '正在允许本次任务';
+  return '正在允许';
+}
+
 function* groupBlocks(blocks: Block[]): Generator<Group> {
   let toolBuf: ToolEntry[] = [];
   for (const b of blocks) {

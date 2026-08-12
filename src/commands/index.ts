@@ -24,7 +24,12 @@ import {
 } from '../card/config-card';
 import { GROUP_MSG_SCOPE, hasGroupMsgScope } from '../bot/app-scope';
 import { requestScopeGrantLink } from '../bot/wizard';
-import { forgetManagedCard, sendManagedCard, updateManagedCard } from '../card/managed';
+import {
+  forgetManagedCard,
+  managedCardSnapshot,
+  sendManagedCard,
+  updateManagedCard,
+} from '../card/managed';
 import { helpCard, resumeCard, statusCard, workspacesCard } from '../card/templates';
 import type { AppConfig, AppPreferences, MessageReplyMode, TenantBrand } from '../config/schema';
 import {
@@ -54,7 +59,7 @@ import {
 import { setSecret } from '../config/keystore';
 import { buildEncryptedAccountConfig, saveConfig } from '../config/store';
 import { log, reportMetric } from '../core/logger';
-import { renderCard } from '../card/run-renderer';
+import { markApprovalSubmitting, renderCard } from '../card/run-renderer';
 import {
   codexRemoteHelpCard,
   codexRemoteNavigationCard,
@@ -728,6 +733,48 @@ async function handleApproval(args: string, ctx: CommandContext): Promise<void> 
     await reply(ctx, '未知审批操作。');
     return;
   }
+
+  if (ctx.fromCardAction) {
+    const messageId = ctx.msg.messageId;
+    const previousCard = managedCardSnapshot(messageId);
+
+    // Let the CardKit callback return immediately. Keeping the callback open
+    // until Codex answers makes Feishu retain its local pressed/loading state
+    // and delays our visual update. The detached task first removes the
+    // approval buttons, then sends the decision; the authoritative
+    // approval_resolved event will render the final state.
+    void (async () => {
+      if (previousCard) {
+        await updateManagedCard(
+          ctx.channel,
+          messageId,
+          markApprovalSubmitting(previousCard, approvalId, decision),
+        ).catch((error) => {
+          log.warn('approval', 'submitting-card-update-failed', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }
+
+      try {
+        await ctx.agent.resolveApproval!(approvalId, decision);
+      } catch (error) {
+        log.fail('approval', error, { step: 'resolve', approvalId });
+        reportMetric('command_fail', 1, { step: 'approval-resolve' });
+        if (previousCard) {
+          await updateManagedCard(ctx.channel, messageId, previousCard).catch((restoreError) => {
+            log.warn('approval', 'card-restore-failed', {
+              message: restoreError instanceof Error ? restoreError.message : String(restoreError),
+            });
+          });
+        } else {
+          await reply(ctx, '审批提交失败，请重试。');
+        }
+      }
+    })();
+    return;
+  }
+
   await ctx.agent.resolveApproval(approvalId, decision);
   await reply(ctx, decision === 'decline' ? '已拒绝。' : '已允许，Codex 将继续执行。');
 }

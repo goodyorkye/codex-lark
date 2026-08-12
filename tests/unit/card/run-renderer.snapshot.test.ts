@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { renderApprovalCard, renderCard } from '../../../src/card/run-renderer.js';
+import {
+  markApprovalSubmitting,
+  renderApprovalCard,
+  renderCard,
+} from '../../../src/card/run-renderer.js';
 import {
   initialState,
   markIdleTimeout,
@@ -134,6 +138,35 @@ describe('run card renderer snapshots', () => {
       expect(JSON.stringify(renderApprovalCard(block.approval))).toContain('等待审批');
       expect(JSON.stringify(renderApprovalCard(block.approval))).toContain('approval.accept');
     }
+  });
+
+  it('immediately hides only the clicked approval buttons while preserving the card', () => {
+    const state = stateFrom([
+      { type: 'text', delta: '已有任务输出' },
+      {
+        type: 'approval_request',
+        approvalId: 'approval-1',
+        title: '运行命令',
+        detail: 'pnpm test',
+        allowForSession: true,
+      },
+      {
+        type: 'approval_request',
+        approvalId: 'approval-2',
+        title: '读取文件',
+        detail: '/tmp/a.txt',
+        allowForSession: false,
+      },
+    ]);
+
+    const submitting = JSON.stringify(
+      markApprovalSubmitting(renderCard(state), 'approval-1', 'accept'),
+    );
+
+    expect(submitting).toContain('已有任务输出');
+    expect(submitting).toContain('正在允许');
+    expect(submitting).not.toContain('"arg":"approval-1"');
+    expect(submitting).toContain('"arg":"approval-2"');
   });
 
   it('keeps local paths in user-visible cards and text fallbacks', () => {

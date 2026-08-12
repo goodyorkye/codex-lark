@@ -4,6 +4,7 @@ import { log } from '../core/logger';
 interface ManagedEntry {
   cardId: string;
   sequence: number;
+  card: object;
 }
 
 // Module-local because state is per-process. Lost on restart, which is fine —
@@ -37,7 +38,7 @@ export async function sendManagedCard(
     { cardId },
     opts.replyTo ? { replyTo: opts.replyTo } : undefined,
   );
-  byMessageId.set(messageId, { cardId, sequence: 0 });
+  byMessageId.set(messageId, { cardId, sequence: 0, card });
   return { messageId, cardId };
 }
 
@@ -58,6 +59,7 @@ export async function updateManagedCard(
   entry.sequence += 1;
   try {
     await channel.updateCardById(entry.cardId, card, entry.sequence);
+    entry.card = card;
   } catch (err) {
     log.fail('card', err, { step: 'managed-update', cardId: entry.cardId, seq: entry.sequence });
     throw err;
@@ -67,6 +69,11 @@ export async function updateManagedCard(
 /** True iff we have the card_id mapping for this messageId. */
 export function isManaged(messageId: string): boolean {
   return byMessageId.has(messageId);
+}
+
+/** Return the last successfully rendered card for an in-place interaction. */
+export function managedCardSnapshot(messageId: string): object | undefined {
+  return byMessageId.get(messageId)?.card;
 }
 
 /** Drop the mapping; call after the card is recalled or the flow ends. */
