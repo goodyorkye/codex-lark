@@ -1,4 +1,8 @@
 import type { ApprovalEntry, Block, FooterStatus, RunState, ToolEntry } from './run-state';
+import {
+  codexRemoteNavigationElements,
+  type CodexRemoteNavigationInfo,
+} from './codex-cards';
 import { toolBodyMd, toolHeaderText } from './tool-render';
 
 const REASONING_MAX = 1500;
@@ -20,6 +24,7 @@ type Group = ToolGroup | TextGroup | ApprovalGroup;
 
 export interface RunCardRenderOptions {
   signCallback?: (action: string) => string;
+  codexNavigation?: CodexRemoteNavigationInfo;
 }
 
 export function renderCard(state: RunState, options: RunCardRenderOptions = {}): object {
@@ -55,6 +60,8 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
   if (state.terminal === 'running') {
     if (state.footer) elements.push(footerStatus(state.footer));
     elements.push(stopButton(options));
+  } else if (options.codexNavigation) {
+    elements.push({ tag: 'hr' }, ...codexRemoteNavigationElements(options.codexNavigation));
   }
 
   return {

@@ -17,6 +17,7 @@ import { handleCardAction } from '../card/dispatcher';
 import { CallbackAuth } from '../card/callback-auth';
 import { CallbackNonceStore } from '../card/callback-store';
 import { renderCard } from '../card/run-renderer';
+import { codexRemoteNavigationCard } from '../card/codex-cards';
 import {
   finalizeIfRunning,
   initialState,
@@ -256,6 +257,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
         const mode = await chatModeCache.resolve(channel, firstMsg.chatId);
         await runAgentBatch({
           channel,
+          agent,
           executor,
           sessions,
           sessionCatalog,
@@ -593,6 +595,7 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
 
 interface RunBatchDeps {
   channel: LarkChannel;
+  agent: AgentAdapter;
   executor: RunExecutor;
   sessions: SessionStore;
   sessionCatalog?: SessionCatalog;
@@ -609,6 +612,7 @@ interface RunBatchDeps {
 async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
   const {
     channel,
+    agent,
     executor,
     sessions,
     sessionCatalog,
@@ -776,8 +780,9 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
     if (getShowToolCalls(controls.cfg)) return state;
     return { ...state, blocks: state.blocks.filter((b) => b.kind !== 'tool') };
   };
-  const cardRenderOptions = callbackAuth
-    ? {
+  const cardRenderOptions = {
+    ...(callbackAuth
+      ? {
         signCallback: (action: string) =>
           callbackAuth.sign({
             runId: execution.runId,
@@ -788,8 +793,12 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
             policyFingerprint: flow.policy.policyFingerprint,
             ttlMs: 24 * 60 * 60 * 1000,
           }),
-      }
-    : {};
+        }
+      : {}),
+    ...(controls.profileConfig.agentKind === 'codex'
+      ? { codexNavigation: { cwd } }
+      : {}),
+  };
 
   // For non-card modes Claude's output doesn't surface visually until either
   // a first streamed token (markdown mode) or the whole run ends (text mode).
@@ -799,6 +808,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
     replyMode === 'card' ? undefined : addWorkingReaction(channel, lastMsg.messageId);
 
   try {
+    let completedState: RunState | undefined;
     if (replyMode === 'card') {
       let latestState: RunState = initialState;
       let producerStarted = false;
@@ -846,6 +856,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
           );
         },
       });
+      completedState = await renderDone;
     } else if (replyMode === 'markdown') {
       let latestState: RunState = initialState;
       let producerStarted = false;
@@ -887,6 +898,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
           }
         },
       });
+      completedState = await renderDone;
     } else {
       // text mode: drain the agent stream without sending anything during
       // the run, then post the final rendered text once as a plain markdown
@@ -903,6 +915,37 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
       if (body.trim()) {
         await channel.send(chatId, { markdown: body }, sendOpts);
       }
+      completedState = finalState;
+    }
+
+    if (
+      controls.profileConfig.agentKind === 'codex' &&
+      replyMode !== 'card' &&
+      completedState &&
+      completedState.terminal !== 'running'
+    ) {
+      const active = sessionCatalog?.activeFor({
+        scopeId: scope,
+        agentId: 'codex',
+        cwdRealpath: cwd,
+        policyFingerprint: flow.policy.policyFingerprint,
+      });
+      let taskTitle: string | undefined;
+      if (active?.threadId && agent.readThread) {
+        try {
+          const thread = await agent.readThread(active.threadId);
+          taskTitle = thread.name ?? thread.preview ?? thread.id;
+        } catch (err) {
+          log.warn('navigation', 'task-title-unavailable', {
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      await channel.send(
+        chatId,
+        { card: codexRemoteNavigationCard({ cwd, taskTitle }) },
+        sendOpts,
+      );
     }
   } catch (err) {
     log.fail('stream', err);

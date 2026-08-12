@@ -55,9 +55,11 @@ import { log, reportMetric } from '../core/logger';
 import { renderCard } from '../card/run-renderer';
 import {
   codexRemoteHelpCard,
+  codexRemoteNavigationCard,
   codexRemoteStatusCard,
   modelsCard,
   projectsCard,
+  recentTasksCard,
   taskDetailCard,
   tasksCard,
   type CodexProjectSummary,
@@ -376,12 +378,25 @@ async function handleProject(args: string, ctx: CommandContext): Promise<void> {
     await handleProjects('', ctx);
     return;
   }
-  await handleCd(rest.join(' '), ctx);
+  const selected = await switchWorkspace(rest.join(' '), ctx);
+  if (!selected) return;
+  await handleTasks('', ctx);
 }
 
-async function handleTasks(_args: string, ctx: CommandContext): Promise<void> {
+async function handleTasks(args: string, ctx: CommandContext): Promise<void> {
   if (!ctx.agent.listThreads) {
     await reply(ctx, '当前 Codex 后端不支持任务列表。');
+    return;
+  }
+  if (args.trim() === 'recent') {
+    const threads = await ctx.agent.listThreads({ limit: 100 });
+    const currentThreadId = currentCodexThreadId(ctx);
+    await sendManagedCard(
+      ctx.channel,
+      ctx.msg.chatId,
+      recentTasksCard(threads, currentThreadId),
+      { replyTo: ctx.msg.messageId },
+    );
     return;
   }
   const cwd = effectiveWorkspaceCwd(ctx);
@@ -396,7 +411,7 @@ async function handleTasks(_args: string, ctx: CommandContext): Promise<void> {
   await sendManagedCard(
     ctx.channel,
     ctx.msg.chatId,
-    tasksCard(threads, active?.threadId),
+    tasksCard(threads, active?.threadId, cwd),
     { replyTo: ctx.msg.messageId },
   );
 }
@@ -476,7 +491,16 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
     policyFingerprint: policy.policyFingerprint,
     threadId: thread.id,
   });
-  await reply(ctx, `✓ 已切换到任务 **${thread.name ?? thread.preview ?? thread.id}**。继续发送消息即可。`);
+  await ctx.channel.send(
+    ctx.msg.chatId,
+    {
+      card: codexRemoteNavigationCard({
+        cwd: workspace.cwdRealpath,
+        taskTitle: thread.name ?? thread.preview ?? thread.id,
+      }),
+    },
+    { replyTo: ctx.msg.messageId },
+  );
 }
 
 async function handleModels(_args: string, ctx: CommandContext): Promise<void> {
@@ -571,24 +595,30 @@ async function handleNewChat(rawName: string, ctx: CommandContext): Promise<void
 
 async function handleCd(args: string, ctx: CommandContext): Promise<void> {
   const input = args.trim();
+  const selected = await switchWorkspace(input, ctx);
+  if (!selected) return;
+  await reply(ctx, `✓ 已切换 cwd 到 \`${selected}\`\n（session 已重置）`);
+}
+
+async function switchWorkspace(input: string, ctx: CommandContext): Promise<string | undefined> {
   if (!input) {
     await reply(ctx, '用法：`/cd <绝对路径>` 或 `/cd ~/xxx`');
-    return;
+    return undefined;
   }
   if (!isAbsoluteOrTilde(input)) {
     await reply(ctx, '请使用绝对路径，或 `~/xxx` 表示 home 下的子路径。');
-    return;
+    return undefined;
   }
   const absolute = expandTilde(input);
   const workspace = await resolveWorkingDirectory(absolute);
   if (!workspace.ok) {
     await reply(ctx, workspace.userVisible);
-    return;
+    return undefined;
   }
   ctx.activeRuns.interrupt(ctx.scope);
   ctx.workspaces.setCwd(ctx.scope, workspace.cwdRealpath);
   ctx.sessions.clear(ctx.scope);
-  await reply(ctx, `✓ 已切换 cwd 到 \`${workspace.cwdRealpath}\`\n（session 已重置）`);
+  return workspace.cwdRealpath;
 }
 
 async function handleWs(args: string, ctx: CommandContext): Promise<void> {
@@ -941,6 +971,11 @@ async function listCodexResumeHistory(
 
 function effectiveWorkspaceCwd(ctx: CommandContext): string | undefined {
   return ctx.workspaces.cwdFor(ctx.scope) ?? ctx.controls.profileConfig.workspaces.default;
+}
+
+function currentCodexThreadId(ctx: CommandContext): string | undefined {
+  if (!ctx.sessionCatalog || !ctx.sessionCatalogIdentity) return undefined;
+  return ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity)?.threadId;
 }
 
 function selectedResumeCwd(ctx: CommandContext): string | undefined {

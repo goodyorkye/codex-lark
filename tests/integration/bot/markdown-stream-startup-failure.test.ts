@@ -96,6 +96,7 @@ describe('markdown stream startup failures', () => {
     );
     expect(lastMarkdown(h.channel)).toContain('agent 失败');
     expect(lastMarkdown(h.channel)).toContain('codex exited with code 1');
+    expect(JSON.stringify(h.channel.sent)).toContain('tasks.recent');
   });
 
   it('does not wait for the working reaction before draining a failed agent run', async () => {
@@ -356,7 +357,10 @@ function message(messageId: string, content: string): NormalizedMessage {
 }
 
 function lastMarkdown(channel: FakeLarkChannel): string {
-  const content = channel.sent.at(-1)?.content as { markdown?: string } | undefined;
+  const content = [...channel.sent]
+    .reverse()
+    .map((entry) => entry.content as { markdown?: string } | undefined)
+    .find((entry) => typeof entry?.markdown === 'string');
   expect(content?.markdown).toBeTypeOf('string');
   return content?.markdown ?? '';
 }

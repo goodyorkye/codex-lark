@@ -32,6 +32,8 @@ Unsigned development builds use ad-hoc signing. On first open, macOS may require
 
 ## Phone commands
 
+Normal use does not require typing commands. Every completed Codex reply includes a **Recent tasks / Projects / New / Models** navigator. Recent tasks are ordered across projects by last activity and switch with one tap; selecting a project immediately opens its task list.
+
 | Command | Result |
 | --- | --- |
 | `/projects` | List Codex projects discovered from task history |

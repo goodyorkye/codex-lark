@@ -7,6 +7,36 @@ export interface CodexProjectSummary {
   updatedAt?: number;
 }
 
+export interface CodexRemoteNavigationInfo {
+  cwd?: string;
+  taskTitle?: string;
+}
+
+export function codexRemoteNavigationCard(info: CodexRemoteNavigationInfo = {}): object {
+  return card('任务导航', codexRemoteNavigationElements(info));
+}
+
+export function codexRemoteNavigationElements(
+  info: CodexRemoteNavigationInfo = {},
+): object[] {
+  const projectName = info.cwd ? basename(info.cwd) || info.cwd : '未选择项目';
+  const current = info.taskTitle
+    ? `${escapeMd(projectName)} / ${escapeMd(info.taskTitle)}`
+    : escapeMd(projectName);
+  return [
+    { tag: 'markdown', content: `📍 **当前**：${current}`, text_size: 'notation' },
+    {
+      tag: 'action',
+      actions: [
+        actionButton('最近任务', 'tasks.recent', 'primary'),
+        actionButton('项目', 'projects'),
+        actionButton('新建', 'new'),
+        actionButton('模型', 'models'),
+      ],
+    },
+  ];
+}
+
 export function codexRemoteHelpCard(): object {
   return card('Codex 手机遥控', [
     {
@@ -34,10 +64,10 @@ export function codexRemoteHelpCard(): object {
     {
       tag: 'action',
       actions: [
+        actionButton('最近任务', 'tasks.recent', 'primary'),
         actionButton('项目', 'projects'),
-        actionButton('任务', 'tasks'),
+        actionButton('新建', 'new'),
         actionButton('模型', 'models'),
-        actionButton('新建', 'new', 'primary'),
       ],
     },
   ]);
@@ -69,10 +99,10 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
     {
       tag: 'action',
       actions: [
+        actionButton('最近任务', 'tasks.recent', 'primary'),
         actionButton('项目', 'projects'),
-        actionButton('任务', 'tasks'),
+        actionButton('新建', 'new'),
         actionButton('模型', 'models'),
-        actionButton('新建', 'new', 'primary'),
       ],
     },
   ]);
@@ -82,7 +112,7 @@ export function projectsCard(projects: CodexProjectSummary[], currentCwd?: strin
   const visible = projects.slice(0, 20);
   return card(
     'Codex 项目',
-    projects.length
+    (projects.length
       ? appendOverflow(visible.map((project) => ({
           tag: 'column_set',
           flex_mode: 'none',
@@ -100,15 +130,20 @@ export function projectsCard(projects: CodexProjectSummary[], currentCwd?: strin
             elements: [button('打开', 'project.use', project.cwd)],
           }],
         })), projects.length, visible.length)
-      : [{ tag: 'markdown', content: '还没有 Codex 项目。先在 Mac 的 Codex Desktop 中打开一个目录即可。' }],
+      : [{ tag: 'markdown', content: '还没有 Codex 项目。先在 Mac 的 Codex Desktop 中打开一个目录即可。' }])
+      .concat([navigationActions('tasks.recent')]),
   );
 }
 
-export function tasksCard(threads: CodexThread[], currentThreadId?: string): object {
+export function tasksCard(
+  threads: CodexThread[],
+  currentThreadId?: string,
+  cwd?: string,
+): object {
   const visible = threads.slice(0, 20);
   return card(
-    'Codex 任务',
-    threads.length
+    cwd ? `${basename(cwd) || cwd} · 任务` : 'Codex 任务',
+    (threads.length
       ? appendOverflow(visible.map((thread) => ({
           tag: 'column_set',
           flex_mode: 'none',
@@ -126,7 +161,37 @@ export function tasksCard(threads: CodexThread[], currentThreadId?: string): obj
             elements: [button('继续', 'task.use', thread.id)],
           }],
         })), threads.length, visible.length)
-      : [{ tag: 'markdown', content: '当前项目还没有任务。直接发送消息即可创建。' }],
+      : [{ tag: 'markdown', content: '当前项目还没有任务。直接发送消息即可创建。' }])
+      .concat([navigationActions('tasks.recent')]),
+  );
+}
+
+export function recentTasksCard(threads: CodexThread[], currentThreadId?: string): object {
+  const sorted = [...threads]
+    .sort((a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0));
+  const visible = sorted.slice(0, 15);
+  return card(
+    '最近任务',
+    (visible.length
+      ? appendOverflow(visible.map((thread) => ({
+          tag: 'column_set',
+          flex_mode: 'none',
+          columns: [{
+            tag: 'column',
+            width: 'weighted',
+            weight: 1,
+            elements: [{
+              tag: 'markdown',
+              content: `${thread.id === currentThreadId ? '📍 ' : ''}**${escapeMd(threadTitle(thread))}**\n${escapeMd(basename(thread.cwd) || thread.cwd)} · ${relativeTime(thread.updatedAt ?? thread.createdAt)}`,
+            }],
+          }, {
+            tag: 'column',
+            width: 'auto',
+            elements: [button('继续', 'task.use', thread.id)],
+          }],
+        })), sorted.length, visible.length)
+      : [{ tag: 'markdown', content: '还没有可继续的 Codex 任务。' }])
+      .concat([navigationActions('projects')]),
   );
 }
 
@@ -215,6 +280,17 @@ function actionButton(
   };
 }
 
+function navigationActions(primaryCommand: 'projects' | 'tasks.recent'): object {
+  return {
+    tag: 'action',
+    actions: [
+      actionButton(primaryCommand === 'projects' ? '项目' : '最近任务', primaryCommand, 'primary'),
+      actionButton('新建', 'new'),
+      actionButton('模型', 'models'),
+    ],
+  };
+}
+
 function threadTitle(thread: CodexThread): string {
   return thread.name?.trim() || thread.preview?.trim() || '未命名任务';
 }
@@ -226,6 +302,20 @@ function shortId(id: string): string {
 function truncate(text: string, max: number): string {
   const normalized = text.trim();
   return normalized.length > max ? `${normalized.slice(0, max)}…` : normalized;
+}
+
+function relativeTime(timestamp: number | undefined): string {
+  if (!timestamp) return '时间未知';
+  const value = timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp;
+  const elapsed = Math.max(0, Date.now() - value);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return new Date(value).toLocaleDateString('zh-CN');
 }
 
 function escapeMd(text: string): string {

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   codexRemoteHelpCard,
+  codexRemoteNavigationCard,
   codexRemoteStatusCard,
   modelsCard,
   projectsCard,
+  recentTasksCard,
   taskDetailCard,
   tasksCard,
 } from '../../../src/card/codex-cards';
@@ -38,6 +40,39 @@ describe('Codex navigation cards', () => {
     const rendered = JSON.stringify(projectsCard(projects));
     expect(rendered).toContain('另有 5 项未显示');
     expect(rendered).not.toContain('/tmp/p-24');
+  });
+
+  it('renders a cross-project recent task switcher', () => {
+    const recent = JSON.stringify(recentTasksCard([
+      {
+        id: 'thread-a',
+        cwd: '/tmp/project-a',
+        name: '修复登录',
+        updatedAt: Date.now() - 60_000,
+      },
+      {
+        id: 'thread-b',
+        cwd: '/tmp/project-b',
+        name: '整理发布说明',
+        updatedAt: Date.now(),
+      },
+    ], 'thread-a'));
+    expect(recent.indexOf('整理发布说明')).toBeLessThan(recent.indexOf('修复登录'));
+    expect(recent).toContain('project\\\\-a');
+    expect(recent).toContain('project\\\\-b');
+    expect(recent).toContain('task.use');
+  });
+
+  it('keeps one-tap navigation on the compact workbench card', () => {
+    const navigation = JSON.stringify(codexRemoteNavigationCard({
+      cwd: '/tmp/project-a',
+      taskTitle: '修复登录',
+    }));
+    expect(navigation).toContain('project\\\\-a / 修复登录');
+    expect(navigation).toContain('tasks.recent');
+    expect(navigation).toContain('projects');
+    expect(navigation).toContain('new');
+    expect(navigation).toContain('models');
   });
 
   it('shows only the focused Codex phone remote command surface', () => {

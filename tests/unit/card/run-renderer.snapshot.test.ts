@@ -100,6 +100,21 @@ describe('run card renderer snapshots', () => {
     });
   });
 
+  it('adds Codex task navigation only after a run finishes', () => {
+    const running = JSON.stringify(renderCard(initialState, {
+      codexNavigation: { cwd: '/tmp/project-a' },
+    }));
+    expect(running).not.toContain('tasks.recent');
+
+    const done = JSON.stringify(renderCard(
+      stateFrom([{ type: 'text', delta: '完成' }, { type: 'done', terminationReason: 'normal' }]),
+      { codexNavigation: { cwd: '/tmp/project-a' } },
+    ));
+    expect(done).toContain('tasks.recent');
+    expect(done).toContain('projects');
+    expect(done).toContain('models');
+  });
+
   it('keeps local paths in user-visible cards and text fallbacks', () => {
     const sensitivePath = '/Users/example/private/customer/repo/secret.txt';
     const state = stateFrom([
