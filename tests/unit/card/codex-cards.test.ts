@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { modelsCard, projectsCard, taskDetailCard, tasksCard } from '../../../src/card/codex-cards';
+import {
+  codexRemoteHelpCard,
+  codexRemoteStatusCard,
+  modelsCard,
+  projectsCard,
+  taskDetailCard,
+  tasksCard,
+} from '../../../src/card/codex-cards';
 
 describe('Codex navigation cards', () => {
   it('renders project and task callbacks understood by the dispatcher', () => {
@@ -31,5 +38,32 @@ describe('Codex navigation cards', () => {
     const rendered = JSON.stringify(projectsCard(projects));
     expect(rendered).toContain('另有 5 项未显示');
     expect(rendered).not.toContain('/tmp/p-24');
+  });
+
+  it('shows only the focused Codex phone remote command surface', () => {
+    const help = JSON.stringify(codexRemoteHelpCard());
+    for (const command of ['/projects', '/tasks', '/new', '/models', '/stop', '/status', '/help']) {
+      expect(help).toContain(command);
+    }
+    for (const internal of ['/account', '/config', '/ps', '/exit', '/doctor', '/invite', '/remove']) {
+      expect(help).not.toContain(internal);
+    }
+    for (const legacy of ['/reset', '/resume', '/cd', '/ws']) {
+      expect(help).not.toContain(legacy);
+    }
+  });
+
+  it('renders a Codex-native status card without bridge internals', () => {
+    const status = JSON.stringify(codexRemoteStatusCard({
+      cwd: '/tmp/demo',
+      threadId: 'thread-1234567890',
+      model: 'gpt-test',
+      activeRun: true,
+    }));
+    expect(status).toContain('Codex 遥控状态');
+    expect(status).toContain('/tmp/demo');
+    expect(status).toContain('gpt\\\\-test');
+    expect(status).not.toContain('owner API');
+    expect(status).not.toContain('lark-cli');
   });
 });

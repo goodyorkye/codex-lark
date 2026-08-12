@@ -238,23 +238,38 @@ describe('agent-aware resume commands', () => {
     expect(rendered).not.toContain('thread-alpha-secret');
   });
 
-  it('labels Codex status as session while reading the recorded thread id', async () => {
+  it('shows a focused Codex remote status while reading the recorded thread id', async () => {
     const h = await createHarness('codex');
 
     await expect(h.run('/status')).resolves.toBe(true);
     let status = JSON.stringify(lastContent(h.channel));
-    expect(status).toContain('**session**');
-    expect(status).toContain('未建立');
-    expect(status).not.toContain('**thread**');
-    expect(status).not.toContain('**conversation**');
+    expect(status).toContain('Codex 遥控状态');
+    expect(status).toContain('下一条消息会新建');
+    expect(status).not.toContain('owner API');
+    expect(status).not.toContain('lark-cli');
 
     h.catalog.upsertActive({ ...h.identity, threadId: 'thread-current', now: 1000 });
     await expect(h.run('/status')).resolves.toBe(true);
 
     status = JSON.stringify(lastContent(h.channel));
-    expect(status).toContain('**session**');
-    expect(status).toContain('thread-c');
-    expect(status).not.toContain('未建立');
+    expect(status).toContain('thread\\\\-c');
+    expect(status).not.toContain('下一条消息会新建');
+  });
+
+  it('shows the Codex remote commands without legacy bridge internals', async () => {
+    const h = await createHarness('codex');
+
+    await expect(h.run('/help')).resolves.toBe(true);
+
+    const help = JSON.stringify(lastContent(h.channel));
+    expect(help).toContain('/projects');
+    expect(help).toContain('/tasks');
+    expect(help).toContain('/models');
+    expect(help).toContain('/new');
+    expect(help).not.toContain('/account');
+    expect(help).not.toContain('/config');
+    expect(help).not.toContain('/resume');
+    expect(help).not.toContain('/ws');
   });
 
   it('does not list local history from home when no workspace is bound', async () => {

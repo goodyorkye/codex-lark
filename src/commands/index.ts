@@ -54,6 +54,8 @@ import { buildEncryptedAccountConfig, saveConfig } from '../config/store';
 import { log, reportMetric } from '../core/logger';
 import { renderCard } from '../card/run-renderer';
 import {
+  codexRemoteHelpCard,
+  codexRemoteStatusCard,
   modelsCard,
   projectsCard,
   taskDetailCard,
@@ -319,6 +321,11 @@ function isAbsoluteOrTilde(p: string): boolean {
 
 async function handleNew(args: string, ctx: CommandContext): Promise<void> {
   const trimmed = args.trim();
+
+  if (ctx.controls.profileConfig.agentKind === 'codex' && trimmed) {
+    await reply(ctx, '用法：`/new`。它只会在当前项目新建 Codex 任务。');
+    return;
+  }
 
   // /new chat [name]  — spin up a fresh group chat bound to a fresh session
   if (trimmed === 'chat' || trimmed.startsWith('chat ')) {
@@ -998,6 +1005,16 @@ async function handleStatus(_args: string, ctx: CommandContext): Promise<void> {
     isCodex && ctx.sessionCatalog && ctx.sessionCatalogIdentity
       ? ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity)
       : undefined;
+  if (isCodex) {
+    const card = codexRemoteStatusCard({
+      cwd,
+      threadId: catalogEntry?.threadId,
+      model: ctx.sessions.getModel(ctx.scope),
+      activeRun: Boolean(ctx.activeRuns.get(ctx.scope)),
+    });
+    await ctx.channel.send(ctx.msg.chatId, { card }, { replyTo: ctx.msg.messageId });
+    return;
+  }
   const card = statusCard({
     profileName: ctx.controls.profile,
     cwd,
@@ -1510,7 +1527,9 @@ function formatDoctorEchoStatus(echoText: string, state: RunState): string {
 }
 
 async function handleHelp(_args: string, ctx: CommandContext): Promise<void> {
-  const card = helpCard(ctx.agent.displayName);
+  const card = ctx.controls.profileConfig.agentKind === 'codex'
+    ? codexRemoteHelpCard()
+    : helpCard(ctx.agent.displayName);
   await ctx.channel.send(ctx.msg.chatId, { card }, { replyTo: ctx.msg.messageId });
 }
 

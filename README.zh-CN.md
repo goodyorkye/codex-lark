@@ -38,14 +38,14 @@ App Server 部分遵循 [OpenAI 官方 Codex App Server 文档](https://develope
 | `/tasks` | 显示当前项目的最近任务 |
 | `/task use <id>` | 继续已有任务 |
 | `/task show <id>` | 查看任务的输入和输出详情 |
-| `/task new` | 清除当前任务，下一条消息会新建任务 |
+| `/new` | 在当前项目新建任务 |
 | `/models` | 显示 Desktop 内置核心报告的可用模型 |
 | `/model use <模型>` | 为当前飞书会话选择后续使用的模型 |
 | `/stop` | 中断当前回合 |
-| `/status` | 查看连接、项目、任务和权限状态 |
-| `/invite user`、`/remove user` | 管理私聊访问权限 |
-| `/invite group`、`/remove group` | 管理群聊访问权限 |
-| `/invite all group` | 允许所有群聊（仅 owner/admin） |
+| `/status` | 查看当前项目、任务、模型和运行状态 |
+| `/help` | 显示手机遥控命令 |
+
+`/reset`、`/resume`、`/cd`、`/ws` 是旧桥接模式的重复命令，在 Codex 手机遥控模式中分别由 `/new`、`/tasks`、`/projects` 取代。账号、进程、重连、群聊访问等内部维护命令不在手机遥控界面开放。
 
 审批卡片提供“仅本次允许”“本会话允许”（协议支持时）和“拒绝”。工具不会静默批准权限。
 

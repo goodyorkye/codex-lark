@@ -39,14 +39,14 @@ Unsigned development builds use ad-hoc signing. On first open, macOS may require
 | `/tasks` | List recent tasks in the selected project |
 | `/task use <id>` | Continue an existing task |
 | `/task show <id>` | Show the task transcript |
-| `/task new` | Clear the current task; the next message creates one |
+| `/new` | Start a new task in the current project |
 | `/models` | List models reported by the active Desktop core |
 | `/model use <model>` | Select a model for later messages in this chat |
 | `/stop` | Interrupt the active turn |
-| `/status` | Show bridge, workspace, task, and permission status |
-| `/invite user`, `/remove user` | Manage DM access |
-| `/invite group`, `/remove group` | Manage group access |
-| `/invite all group` | Permit all groups (owner/admin only) |
+| `/status` | Show the current project, task, model, and run state |
+| `/help` | Show the phone remote commands |
+
+The legacy `/reset`, `/resume`, `/cd`, and `/ws` commands are redundant in Codex phone-remote mode and are replaced by `/new`, `/tasks`, and `/projects`. Internal account, process, reconnect, and group-access maintenance commands are not exposed in the phone remote UI.
 
 Approval cards offer **Allow once**, **Allow for session** where supported, and **Decline**. The bridge does not silently approve a request.
 

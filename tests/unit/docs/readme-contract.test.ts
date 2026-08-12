@@ -20,7 +20,7 @@ describe('README product contract', () => {
     for (const phrase of [
       '/projects',
       '/tasks',
-      '/task new',
+      '/new',
       '/task show',
       '/models',
       '/model use',
