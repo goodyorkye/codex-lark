@@ -25,15 +25,12 @@ export function codexRemoteNavigationElements(
     : escapeMd(projectName);
   return [
     { tag: 'markdown', content: `📍 **当前**：${current}`, text_size: 'notation' },
-    {
-      tag: 'action',
-      actions: [
-        actionButton('最近任务', 'tasks.recent', 'primary'),
-        actionButton('项目', 'projects'),
-        actionButton('新建', 'new'),
-        actionButton('模型', 'models'),
-      ],
-    },
+    buttonRow([
+      actionButton('最近任务', 'tasks.recent', 'primary'),
+      actionButton('项目', 'projects'),
+      actionButton('新建', 'new'),
+      actionButton('模型', 'models'),
+    ]),
   ];
 }
 
@@ -61,15 +58,12 @@ export function codexRemoteHelpCard(): object {
         '需要授权时直接点击审批卡片。',
       ].join('\n'),
     },
-    {
-      tag: 'action',
-      actions: [
-        actionButton('最近任务', 'tasks.recent', 'primary'),
-        actionButton('项目', 'projects'),
-        actionButton('新建', 'new'),
-        actionButton('模型', 'models'),
-      ],
-    },
+    buttonRow([
+      actionButton('最近任务', 'tasks.recent', 'primary'),
+      actionButton('项目', 'projects'),
+      actionButton('新建', 'new'),
+      actionButton('模型', 'models'),
+    ]),
   ]);
 }
 
@@ -96,15 +90,12 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
         `🏃 **运行**：${info.activeRun ? '进行中' : '空闲'}`,
       ].join('\n\n'),
     },
-    {
-      tag: 'action',
-      actions: [
-        actionButton('最近任务', 'tasks.recent', 'primary'),
-        actionButton('项目', 'projects'),
-        actionButton('新建', 'new'),
-        actionButton('模型', 'models'),
-      ],
-    },
+    buttonRow([
+      actionButton('最近任务', 'tasks.recent', 'primary'),
+      actionButton('项目', 'projects'),
+      actionButton('新建', 'new'),
+      actionButton('模型', 'models'),
+    ]),
   ]);
 }
 
@@ -281,13 +272,23 @@ function actionButton(
 }
 
 function navigationActions(primaryCommand: 'projects' | 'tasks.recent'): object {
+  return buttonRow([
+    actionButton(primaryCommand === 'projects' ? '项目' : '最近任务', primaryCommand, 'primary'),
+    actionButton('新建', 'new'),
+    actionButton('模型', 'models'),
+  ]);
+}
+
+function buttonRow(buttons: object[]): object {
   return {
-    tag: 'action',
-    actions: [
-      actionButton(primaryCommand === 'projects' ? '项目' : '最近任务', primaryCommand, 'primary'),
-      actionButton('新建', 'new'),
-      actionButton('模型', 'models'),
-    ],
+    tag: 'column_set',
+    flex_mode: 'none',
+    columns: buttons.map((entry) => ({
+      tag: 'column',
+      width: 'weighted',
+      weight: 1,
+      elements: [entry],
+    })),
   };
 }
 

@@ -115,6 +115,19 @@ describe('run card renderer snapshots', () => {
     expect(done).toContain('models');
   });
 
+  it('keeps approval controls compatible with Feishu card schema V2', () => {
+    const approval = renderCard(stateFrom([{
+      type: 'approval_request',
+      approvalId: 'approval-1',
+      title: '运行命令',
+      detail: 'pnpm test',
+      allowForSession: true,
+    }]));
+    expect(collectTags(approval)).not.toContain('action');
+    expect(JSON.stringify(approval)).toContain('approval.accept');
+    expect(JSON.stringify(approval)).toContain('approval.decline');
+  });
+
   it('keeps local paths in user-visible cards and text fallbacks', () => {
     const sensitivePath = '/Users/example/private/customer/repo/secret.txt';
     const state = stateFrom([
@@ -137,4 +150,14 @@ function stateFrom(events: AgentEvent[]): RunState {
 
 function expectCard(state: RunState) {
   return expect(normalizeCard(renderCard(state)));
+}
+
+function collectTags(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(collectTags);
+  if (!value || typeof value !== 'object') return [];
+  const record = value as Record<string, unknown>;
+  return [
+    ...(typeof record.tag === 'string' ? [record.tag] : []),
+    ...Object.values(record).flatMap(collectTags),
+  ];
 }

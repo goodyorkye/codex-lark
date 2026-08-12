@@ -64,15 +64,17 @@ describe('Codex navigation cards', () => {
   });
 
   it('keeps one-tap navigation on the compact workbench card', () => {
-    const navigation = JSON.stringify(codexRemoteNavigationCard({
+    const card = codexRemoteNavigationCard({
       cwd: '/tmp/project-a',
       taskTitle: '修复登录',
-    }));
+    });
+    const navigation = JSON.stringify(card);
     expect(navigation).toContain('project\\\\-a / 修复登录');
     expect(navigation).toContain('tasks.recent');
     expect(navigation).toContain('projects');
     expect(navigation).toContain('new');
     expect(navigation).toContain('models');
+    expect(collectTags(card)).not.toContain('action');
   });
 
   it('shows only the focused Codex phone remote command surface', () => {
@@ -102,3 +104,13 @@ describe('Codex navigation cards', () => {
     expect(status).not.toContain('lark-cli');
   });
 });
+
+function collectTags(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(collectTags);
+  if (!value || typeof value !== 'object') return [];
+  const record = value as Record<string, unknown>;
+  return [
+    ...(typeof record.tag === 'string' ? [record.tag] : []),
+    ...Object.values(record).flatMap(collectTags),
+  ];
+}

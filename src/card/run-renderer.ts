@@ -119,7 +119,7 @@ function approvalPanel(approval: ApprovalEntry, options: RunCardRenderOptions): 
       weight: 1,
       elements: [
         { tag: 'markdown', content: `🔐 **${approval.title}**\n\n${approval.detail || '_无附加说明_'}` },
-        { tag: 'action', actions: buttons },
+        ...buttons,
       ],
     }],
   };
