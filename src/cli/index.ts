@@ -16,55 +16,39 @@ import {
   runProfileRemove,
   runProfileUse,
 } from './commands/profile';
-import {
-  runServiceRestart,
-  runServiceStart,
-  runServiceStatus,
-  runServiceStop,
-  runServiceUnregister,
-} from './commands/service';
-import { runStart } from './commands/start';
-import { runDesktopDashboard } from '../desktop/dashboard';
+import { runStart, type StartOptions } from './commands/start';
+import { TerminalUi } from './terminal-ui';
 
 const program = new Command();
 
 program
   .name('codex-lark')
   .description('Control Codex Desktop from Feishu/Lark — no separate Codex CLI install')
-  .version(pkg.version, '-v, --version');
+  .version(pkg.version, '-v, --version')
+  .option('--profile <name>', 'profile name (default: codex)')
+  .option('--workspace <path>', 'initial working directory for first-time setup')
+  .option('--app-id <id>', 'use an existing Lark/Feishu app instead of QR app creation')
+  .option('--app-secret <secret>', 'App Secret for --app-id')
+  .option('--tenant <tenant>', 'tenant for --app-id (feishu or lark; default feishu)')
+  .action(async (opts: ForegroundOptions) => {
+    await runForeground(opts);
+  });
 
 // === process-level commands (work directly on bridge processes) ===
 
 program
-  .command('desktop')
-  .description('Open the local setup/status panel (recommended on macOS)')
-  .option('--no-open', 'do not open the browser automatically')
-  .action(async (opts: { open?: boolean }) => {
-    await runDesktopDashboard({ openBrowser: opts.open !== false });
-  });
-
-program
   .command('run')
-  .description('Run the bridge in the foreground (was `start` in older versions)')
+  .description('Run in the foreground (same as `codex-lark` with no command)')
   .option('-c, --config <path>', 'path to config file')
   .option('--profile <name>', 'profile name to run')
-  .option('--agent <kind>', 'compatibility option; codex is the supported runtime')
   .option('--workspace <path>', 'initial working directory for first-run profile bootstrap')
   .option('--app-id <id>', 'use an existing Lark/Feishu app instead of QR app creation')
   .option('--app-secret <secret>', 'App Secret for --app-id; prefer interactive input on shared machines')
   .option('--tenant <tenant>', 'tenant for --app-id (feishu or lark; default feishu)')
-  .option('--skip-check-lark-cli', 'skip lark-cli pre-flight check (auto-install + bind)')
-  .action(async (opts: {
+  .action(async (opts: ForegroundOptions & {
     config?: string;
-    profile?: string;
-    agent?: string;
-    workspace?: string;
-    appId?: string;
-    appSecret?: string;
-    tenant?: string;
-    skipCheckLarkCli?: boolean;
   }) => {
-    await runStart(opts);
+    await runForeground(opts);
   });
 
 program
@@ -157,62 +141,6 @@ program
     await runKillCli(target);
   });
 
-// === service-level commands (OS-managed daemon: launchd/systemd/schtasks) ===
-
-program
-  .command('start')
-  .description('Install (if needed) and start the bridge as an OS-managed daemon')
-  .option('--profile <name>', 'profile name (defaults to active profile)')
-  .option('--agent <kind>', 'agent kind for first-run profile bootstrap (claude or codex)')
-  .option('--workspace <path>', 'initial working directory for first-run profile bootstrap')
-  .option('--app-id <id>', 'use an existing Lark/Feishu app instead of QR app creation')
-  .option('--app-secret <secret>', 'App Secret for --app-id; prefer interactive input on shared machines')
-  .option('--tenant <tenant>', 'tenant for --app-id (feishu or lark; default feishu)')
-  .option('--skip-check-lark-cli', 'skip lark-cli pre-flight check (auto-install + bind)')
-  .action(async (opts: {
-    profile?: string;
-    agent?: string;
-    workspace?: string;
-    appId?: string;
-    appSecret?: string;
-    tenant?: string;
-    skipCheckLarkCli?: boolean;
-  }) => {
-    await runServiceStart(opts);
-  });
-
-program
-  .command('stop')
-  .description('Stop the OS-managed daemon (unload from launchd; plist stays)')
-  .option('--profile <name>', 'profile name (defaults to active profile)')
-  .action(async (opts: { profile?: string }) => {
-    await runServiceStop({ profile: opts.profile });
-  });
-
-program
-  .command('restart')
-  .description('Restart the OS-managed daemon')
-  .option('--profile <name>', 'profile name (defaults to active profile)')
-  .action(async (opts: { profile?: string }) => {
-    await runServiceRestart({ profile: opts.profile });
-  });
-
-program
-  .command('status')
-  .description('Show OS service status (pid, last exit, log paths)')
-  .option('--profile <name>', 'profile name (defaults to active profile)')
-  .action(async (opts: { profile?: string }) => {
-    await runServiceStatus({ profile: opts.profile });
-  });
-
-program
-  .command('unregister')
-  .description('Remove the OS service registration (bootout + delete plist)')
-  .option('--profile <name>', 'profile name (defaults to active profile)')
-  .action(async (opts: { profile?: string }) => {
-    await runServiceUnregister({ profile: opts.profile });
-  });
-
 const secrets = program
   .command('secrets')
   .description('Manage the bridge\'s encrypted secret keystore (~/.codex-lark/secrets.enc)');
@@ -249,6 +177,34 @@ secrets
   .action(async (opts: { appId: string; profile?: string }) => {
     await runSecretsRemove(opts.appId, { profile: opts.profile });
   });
+
+interface ForegroundOptions {
+  config?: string;
+  profile?: string;
+  workspace?: string;
+  appId?: string;
+  appSecret?: string;
+  tenant?: string;
+}
+
+async function runForeground(opts: ForegroundOptions): Promise<void> {
+  const ui = new TerminalUi();
+  ui.start();
+  try {
+    const startOptions: StartOptions = {
+      ...opts,
+      profile: opts.profile ?? 'codex',
+      agent: 'codex',
+      skipCheckLarkCli: true,
+      registrationProgress: ui.registrationProgress,
+      onStatus: (phase, detail) => ui.status(phase, detail),
+    };
+    await runStart(startOptions);
+  } catch (error) {
+    ui.fail(error);
+    throw error;
+  }
+}
 
 program.parseAsync(process.argv).catch((err: unknown) => {
   const diagnostic = getAgentPreflightDiagnostic(err);

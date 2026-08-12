@@ -45,6 +45,7 @@ import { refreshOwnerControls } from '../../policy/owner';
 import { SessionStore } from '../../session/store';
 import { SessionCatalog } from '../../session/catalog';
 import { WorkspaceStore } from '../../workspace/store';
+import type { RegistrationProgress } from '../../bot/wizard';
 
 // Prefer IPv4 — Node 20+ defaults to "verbatim" which respects whatever
 // the resolver returns first; in IPv6-broken networks (WSL2, certain VPNs,
@@ -80,6 +81,7 @@ export interface StartOptions {
   confirmStopRuntimeLockProcess?: (err: RuntimeLockConflictError) => boolean | Promise<boolean>;
   stopRuntimeLockProcess?: (meta: RuntimeLockMeta) => StopProcessEntryResult | Promise<StopProcessEntryResult>;
   onStatus?: (phase: 'loading' | 'checking' | 'connecting' | 'online', detail?: string) => void;
+  registrationProgress?: RegistrationProgress;
 }
 
 export async function runStart(opts: StartOptions): Promise<void> {

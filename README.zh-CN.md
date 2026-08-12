@@ -18,16 +18,26 @@
 
 App Server 部分遵循 [OpenAI 官方 Codex App Server 文档](https://developers.openai.com/codex/app-server/)：stdio JSONL、初始化、线程、回合、模型、流式通知和服务端审批请求。
 
-## 最省心的 macOS 使用方式
+## 最省心的使用方式
 
-1. 安装并登录官方 ChatGPT 或 Codex Desktop。
-2. 从 Releases 下载 `codex-lark-macos-*.zip`，解压后打开 **Codex Lark.app**。
-3. 浏览器会打开一个本机设置页；第一次用手机飞书扫码。
-4. 在手机里打开自动创建的个人助手，发送 `/projects`。
+需要 macOS 13+、Node.js 20.12+，以及已经登录的官方 ChatGPT 或 Codex Desktop。
 
-设置页只监听随机的 `127.0.0.1` 端口，并使用每次启动随机生成的访问令牌。App Secret 只留在桥接进程中，不会返回给浏览器。
+直接运行，无需安装：
 
-开发构建仅做临时签名，第一次打开可能需要在 Finder 中按住 Control 点击，然后选择“打开”。正式发布前应使用 Developer ID 签名并公证。
+```bash
+npx -y codex-lark@latest
+```
+
+第一次运行会在终端显示二维码。用飞书扫码后，终端会显示 Desktop 检查、飞书连接和在线状态；保持终端窗口打开即可使用，按 `Ctrl+C` 停止。程序不会打开浏览器，也不会安装或调用独立的 Codex CLI。
+
+经常使用可以先安装，之后用更短的命令启动：
+
+```bash
+npm install -g codex-lark
+codex-lark
+```
+
+当前只提供前台运行模式，关闭终端就会停止桥接；暂不注册 launchd 等系统后台服务。
 
 ## 手机端命令
 
@@ -86,6 +96,7 @@ App Server 部分遵循 [OpenAI 官方 Codex App Server 文档](https://develope
 ```
 
 旧版 `sandbox` 仅用于迁移兼容，不建议继续配置。扫码者会被解析为应用 owner 和初始管理员，其他访问名单默认关闭。Secret 使用本机密钥库派生密钥加密保存；日志会脱敏凭据、资源 ID、提示内容和本机路径。
+飞书/Lark App Secret 只保留在本机桥接进程及加密配置中，终端二维码不会输出它。
 
 共享 Mac 上使用前，请阅读 [docs/PRIVACY.md](docs/PRIVACY.md) 和 [SECURITY.md](SECURITY.md)。
 
@@ -99,30 +110,26 @@ pnpm install
 pnpm test
 pnpm typecheck
 pnpm build
-pnpm package:mac
 ```
 
-运行开发版扫码面板：
+运行开发版终端桥接：
 
 ```bash
 pnpm build
-node dist/cli.cjs desktop
+node dist/cli.cjs
 ```
 
-维护者也可以使用 CLI 和系统服务：
+`run` 是兼容写法，效果与无子命令启动相同：
 
 ```bash
 codex-lark run
-codex-lark start
-codex-lark status
-codex-lark stop
 codex-lark profile export codex --output ./profile.json
 codex-lark profile remove codex
 codex-lark profile remove codex --purge --yes
 codex-lark profile export codex --include-secrets --yes
 ```
 
-每个 profile 对应独立的 per-profile service，并保留当前 profile 的 lark-cli 目录用于兼容功能。推荐的 Desktop 面板会跳过 lark-cli 安装；聊天、卡片、文件和审批都不依赖它。lark-cli 身份策略只影响可选的 agent 侧飞书工具。
+前台启动默认跳过 lark-cli 安装；聊天、卡片、文件和审批都不依赖 lark-cli。现有 profile 管理命令继续保留，用于导出、切换或安全清理本机配置。
 
 测试分层和发布流程见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 

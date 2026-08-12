@@ -23,15 +23,4 @@ export default defineConfig([
     splitting: false,
     dts: true,
   },
-  {
-    entry: { 'desktop-sea': 'src/desktop/sea-entry.ts' },
-    outDir: 'dist',
-    format: ['cjs'],
-    target: 'node22',
-    platform: 'node',
-    sourcemap: false,
-    splitting: false,
-    dts: false,
-    noExternal: [/.*/],
-  },
 ]);

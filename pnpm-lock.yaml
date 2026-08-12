@@ -51,9 +51,6 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.6
-      postject:
-        specifier: ^1.0.0-alpha.6
-        version: 1.0.0-alpha.6
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(postcss@8.5.10)(typescript@5.9.3)
@@ -1011,11 +1008,6 @@ packages:
   postcss@8.5.10:
     resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
     engines: {node: ^10 || ^12 || >=14}
-
-  postject@1.0.0-alpha.6:
-    resolution: {integrity: sha512-b9Eb8h2eVqNE8edvKdwqkrY6O7kAwmI8kcnBv1NScolYJbo59XUF0noFq+lxbC1yN20bmC0WBEbDC5H/7ASb0A==}
-    engines: {node: '>=14.0.0'}
-    hasBin: true
 
   proper-lockfile@4.1.2:
     resolution: {integrity: sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==}
@@ -2041,10 +2033,6 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
-
-  postject@1.0.0-alpha.6:
-    dependencies:
-      commander: 9.5.0
 
   proper-lockfile@4.1.2:
     dependencies:

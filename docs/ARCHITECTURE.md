@@ -42,9 +42,9 @@ codex-lark runtime ─── local encrypted state (~/.codex-lark)
 
 The channel transport handles QR registration, long connection, message normalization, attachments, cards, callback authentication, document comments, access control, and reconnection. The runtime groups App Server threads by `cwd` to present projects and persists per-chat project/task/model selection.
 
-### Setup dashboard
+### Terminal startup
 
-`src/desktop/dashboard.ts` binds a random local-only port, generates a random API token, renders the QR code, and reports status. It never serializes credentials into HTML or API responses. `src/desktop/sea-entry.ts` is bundled into a standalone macOS executable.
+The npm executable starts in the foreground. `src/cli/terminal-ui.ts` reports Desktop discovery and connection progress, while `src/bot/wizard.ts` renders the first-run QR code directly in the terminal. No browser, local web server, Electron runtime, or separately installed Codex CLI is involved. Closing the terminal or pressing Ctrl+C stops the bridge.
 
 ## Ownership rules
 

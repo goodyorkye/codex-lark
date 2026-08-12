@@ -6,17 +6,14 @@ This roadmap describes direction, not a delivery promise.
 
 - App Server task and approval control
 - QR-created Feishu/Lark PersonalAgent
-- local setup/status page
-- ad-hoc-signed standalone macOS package
+- foreground npm/npx launcher with terminal QR and status
 - automated protocol and transport regressions
 
 ## 0.2 — low-friction daily use
 
-- menu-bar status and reopen-dashboard action
-- optional launch-at-login toggle
 - clearer reconnect and Desktop-version diagnostics
 - pagination/search for large project and task sets
-- signed and notarized release pipeline
+- optional background/service mode after the foreground workflow is stable
 
 ## 0.3 — compatibility confidence
 

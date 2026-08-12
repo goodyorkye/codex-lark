@@ -37,8 +37,6 @@
     "dev": "tsup --watch",
     "build": "tsup",
     "smoke:desktop": "node ./scripts/smoke-desktop.mjs",
-    "smoke:mac-app": "node ./scripts/smoke-macos-app.mjs",
-    "package:mac": "bash ./scripts/package-macos.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit --passWithNoTests",
@@ -64,7 +62,6 @@
     "@types/node": "^22.10.0",
     "@types/proper-lockfile": "^4.1.4",
     "@types/qrcode": "^1.5.5",
-    "postject": "^1.0.0-alpha.6",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"

@@ -1,7 +1,7 @@
 import { mkdir, readFile, realpath } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import * as p from '@clack/prompts';
-import { runRegistrationWizard } from '../bot/wizard';
+import { runRegistrationWizard, type RegistrationProgress } from '../bot/wizard';
 import { detectInstalledAgents, type DetectedAgent } from '../cli/agent-detection';
 import {
   createBootstrapCodexConfig,
@@ -61,6 +61,7 @@ export interface ResolveProfileRuntimeOptions {
   appSecret?: string;
   tenant?: string;
   allowBootstrap?: boolean;
+  registrationProgress?: RegistrationProgress;
   selectAgent?: (detected: DetectedAgent[]) => AgentKind | undefined | Promise<AgentKind | undefined>;
   handleActiveBridgeMigrationConflict?: (
     err: ActiveBridgeMigrationConflictError,
@@ -431,11 +432,11 @@ async function resolveBootstrapAppConfig(opts: ResolveProfileRuntimeOptions): Pr
     if (!isInteractiveTerminal()) {
       throw new Error(
         '当前没有配置，非交互模式无法完成扫码创建应用。' +
-          '请运行 `codex-lark desktop` 打开扫码面板，' +
+          '请在交互式终端运行 `codex-lark` 完成扫码，' +
           '或传入 --app-id 和 --app-secret。',
       );
     }
-    return runRegistrationWizard();
+    return runRegistrationWizard(opts.registrationProgress);
   }
   let appSecret = opts.appSecret;
   if (!appSecret) {

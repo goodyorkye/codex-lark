@@ -10,8 +10,8 @@ describe('README product contract', () => {
       'ChatGPT.app/Contents/Resources/codex',
       'Codex App Server',
       'Desktop IPC',
-      '127.0.0.1',
       'App Secret',
+      'npx -y codex-lark@latest',
     ]) expect(docs).toContain(phrase);
   });
 
@@ -53,18 +53,19 @@ describe('README product contract', () => {
       'pnpm test',
       'pnpm typecheck',
       'pnpm build',
-      'pnpm package:mac',
       '--purge --yes',
       '--include-secrets --yes',
     ]) expect(docs).toContain(phrase);
   });
 
-  it('keeps CLI help aligned with profile-aware service and workspace flags', async () => {
+  it('keeps CLI help aligned with foreground startup and workspace flags', async () => {
     const cli = await readFile(new URL('../../../src/cli/index.ts', import.meta.url), 'utf8');
     expect(cli).toContain(".name('codex-lark')");
-    expect(cli).toContain(".command('desktop')");
+    expect(cli).toContain('runForeground');
+    expect(cli).not.toContain(".command('desktop')");
+    expect(cli).not.toContain(".command('start')");
     expect(cli).toContain('--workspace <path>');
-    expect(cli).toContain('profile name (defaults to active profile)');
+    expect(cli).toContain('profile name (default: codex)');
   });
 });
 

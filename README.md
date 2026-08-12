@@ -19,16 +19,26 @@ Control the Codex Desktop tasks on your Mac from Feishu or Lark. Install no sepa
 
 The App Server portion follows the [official OpenAI Codex App Server documentation](https://developers.openai.com/codex/app-server/): JSONL over stdio, initialization, threads, turns, models, streaming notifications, and server-initiated approvals.
 
-## Easiest setup on macOS
+## Easiest setup
 
-1. Install and sign in to the official ChatGPT or Codex Desktop app.
-2. Download `codex-lark-macos-*.zip` from Releases, unzip it, and open **Codex Lark.app**.
-3. A local setup page opens. Scan its QR code with Feishu/Lark once.
-4. Open the newly created personal assistant on your phone and send `/projects`.
+Requirements: macOS 13+, Node.js 20.12+, and the signed-in official ChatGPT or Codex Desktop app.
 
-The setup page listens only on a random `127.0.0.1` port and requires a random per-process token. The App Secret remains in the bridge process and is never returned to the browser.
+Run directly without installing:
 
-Unsigned development builds use ad-hoc signing. On first open, macOS may require **Control-click → Open**. Official releases should be Developer ID signed and notarized before broad distribution.
+```bash
+npx -y codex-lark@latest
+```
+
+On first run the terminal displays a QR code. Scan it with Feishu/Lark, then leave the terminal open while the bridge is in use. The terminal shows Desktop discovery, connection, and online status. Press Ctrl+C to stop. No browser opens, and no separate Codex CLI is installed or invoked.
+
+For frequent use, install once and launch with a shorter command:
+
+```bash
+npm install -g codex-lark
+codex-lark
+```
+
+The current release runs only in the foreground. Closing the terminal stops the bridge; OS service registration is intentionally deferred.
 
 ## Phone commands
 
@@ -89,6 +99,7 @@ Fresh profiles use the canonical configuration:
 The legacy `sandbox` field is accepted only when migrating older bridge configurations. It is not the recommended configuration surface.
 
 The QR creator is resolved as the application owner and is the initial administrator. Access lists are otherwise closed by default. Secrets are encrypted at rest through the local keystore implementation; logs redact credentials, resource identifiers, prompts, and local paths.
+The Feishu/Lark App Secret remains in the local bridge process and its encrypted local configuration; the terminal QR does not print it.
 
 See [docs/PRIVACY.md](docs/PRIVACY.md) and [SECURITY.md](SECURITY.md) before operating this on a shared Mac.
 
@@ -102,30 +113,26 @@ pnpm install
 pnpm test
 pnpm typecheck
 pnpm build
-pnpm package:mac
 ```
 
-Run the development dashboard:
+Run the development terminal bridge:
 
 ```bash
 pnpm build
-node dist/cli.cjs desktop
+node dist/cli.cjs
 ```
 
-The CLI remains available for maintainers and headless service setup:
+`run` remains as a compatibility spelling for the same foreground startup:
 
 ```bash
 codex-lark run
-codex-lark start
-codex-lark status
-codex-lark stop
 codex-lark profile export codex --output ./profile.json
 codex-lark profile remove codex
 codex-lark profile remove codex --purge --yes
 codex-lark profile export codex --include-secrets --yes
 ```
 
-Each profile is a per-profile service and keeps a profile-local lark-cli directory for compatibility features. The recommended Desktop dashboard skips lark-cli installation and does not require it for chat, cards, files, or approvals. The lark-cli identity policy applies only to optional agent-side Feishu tools.
+Foreground startup skips lark-cli installation by default; chat, cards, files, and approvals do not depend on lark-cli. Profile commands remain available for exporting, switching, or safely cleaning local configuration.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for test layers and release steps.
 

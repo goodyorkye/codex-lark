@@ -59,11 +59,14 @@ export async function requestScopeGrantLink(opts: {
   });
 }
 
-export async function runRegistrationWizard(): Promise<AppConfig> {
+export async function runRegistrationWizard(
+  progress: RegistrationProgress = {},
+): Promise<AppConfig> {
   console.log('\n未检测到飞书应用配置，进入扫码创建向导。\n');
 
   const config = await registerCodexLarkApp({
     onQRCodeReady: (info) => {
+      progress.onQRCodeReady?.(info);
       console.log('请用飞书 App 扫描以下二维码完成应用创建：\n');
       void QRCode.toString(info.url, { type: 'terminal', small: true }).then((qr) => {
         console.log(qr);
@@ -73,6 +76,7 @@ export async function runRegistrationWizard(): Promise<AppConfig> {
       console.log(`也可以直接在浏览器打开：${info.url}\n`);
     },
     onStatusChange: (info) => {
+      progress.onStatusChange?.(info);
       if (info.status === 'domain_switched') {
         console.log('识别到国际版租户，已切换到 larksuite.com 域名。');
       } else if (info.status === 'slow_down') {
