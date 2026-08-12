@@ -6,11 +6,11 @@ Install the official macOS app in `/Applications` or `~/Applications`, open it o
 
 ## The QR code expired
 
-Click **重新检查** in the local dashboard. A new registration flow and QR code will be created.
+Press Ctrl+C and run `codex-lark` again. The terminal starts a new registration flow and prints a fresh QR code.
 
 ## The bot exists but does not answer
 
-Keep the Mac awake and confirm both OpenAI and Feishu/Lark are reachable from the Mac. Reopen Codex Lark.app and check its local status page. Duplicate processes are rejected, so seeing “already running” is normally harmless.
+Keep the Mac awake and confirm both OpenAI and Feishu/Lark are reachable from the Mac. Check the foreground terminal and `~/.codex-lark/profiles/codex/logs/`. Use `codex-lark ps` to find an existing bridge process; duplicate processes are rejected intentionally.
 
 ## A Desktop task is missing on the phone
 

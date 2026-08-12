@@ -36,7 +36,7 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "smoke:desktop": "node ./scripts/smoke-desktop.mjs",
+    "smoke:app-server": "node ./scripts/smoke-desktop.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit --passWithNoTests",
@@ -45,7 +45,7 @@
     "ci:local": "git diff --check && pnpm test && pnpm typecheck && pnpm build",
     "ci:platform": "pnpm test && pnpm typecheck && pnpm build",
     "prepare": "npm run build",
-    "prepublishOnly": "pnpm typecheck && pnpm build"
+    "prepublishOnly": "pnpm test && pnpm typecheck && pnpm build"
   },
   "dependencies": {
     "@clack/prompts": "^1.4.0",

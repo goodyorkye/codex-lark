@@ -4,7 +4,7 @@
 
 ## Implementation boundary
 
-<!-- App Server, Desktop IPC, Feishu transport, dashboard, packaging, or docs -->
+<!-- App Server, Desktop IPC, Feishu transport, terminal startup, packaging, or docs -->
 
 ## Security and privacy
 

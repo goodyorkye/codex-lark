@@ -2,7 +2,7 @@
 
 Control the Codex Desktop tasks on your Mac from Feishu or Lark. Install no separate Codex CLI, expose no public web server, and create no developer-console bot by hand.
 
-[简体中文](README.zh-CN.md) · [Architecture](docs/ARCHITECTURE.md) · [Security](SECURITY.md) · [Roadmap](ROADMAP.md)
+[简体中文](README.zh-CN.md) · [Configuration](docs/CONFIGURATION.md) · [Architecture](docs/ARCHITECTURE.md) · [Security](SECURITY.md) · [Roadmap](ROADMAP.md)
 
 > Status: early preview for macOS. The core App Server integration is covered by automated tests; Desktop IPC mirroring is experimental because that local Desktop interface is not a documented public contract.
 

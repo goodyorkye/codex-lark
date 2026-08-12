@@ -21,7 +21,7 @@ pnpm typecheck
 pnpm build
 ```
 
-For macOS packaging, run `pnpm package:mac`. A real Desktop smoke test is documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and must remain read-only unless the test explicitly creates a disposable task.
+A real App Server smoke test is documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and must remain read-only unless the test explicitly creates a disposable task.
 
 ## Pull requests
 

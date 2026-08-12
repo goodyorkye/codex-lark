@@ -23,15 +23,22 @@ The release checklist verifies that the bundled executable exists, accepts App S
 
 Set `CODEX_LARK_DESKTOP_IPC=0` to isolate App Server behavior. Use `CODEX_LARK_CODEX_BIN` only for fake executable tests or explicit development builds; production discovery must use the Desktop bundle.
 
+Run the read-only check with:
+
+```bash
+pnpm smoke:app-server
+```
+
 ## npm package
 
 `pnpm build` creates the foreground CLI and public library output under `dist/`. Use `npm pack --dry-run` to inspect the exact publish surface. The published package must not include local profiles, media, logs, Desktop credentials, or generated macOS application bundles.
 
 ## Release checklist
 
-- Update `CHANGELOG.md`, package version, and `Info.plist` version.
+- Update `CHANGELOG.md` and the package version.
 - Run all checks on macOS, Linux, and Windows; Desktop-only tests may skip off macOS.
 - Run a read-only smoke check on the oldest and newest supported Desktop versions.
 - Run dependency and license audits.
 - Pack on a clean runner and inspect the tarball contents.
 - Test both `npx codex-lark` first-run QR registration and an already-configured restart.
+- Create a Git tag matching the package version only after those checks pass.

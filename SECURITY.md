@@ -8,12 +8,12 @@ Maintainers should acknowledge reports within 7 days and publish a remediation t
 
 ## Security model
 
-- The setup dashboard binds to `127.0.0.1` on a random port and protects API calls with a random token.
+- First-run registration is rendered in the local terminal; the bridge does not expose a setup web server.
 - Feishu card callbacks use signed, scoped, nonce-protected actions.
 - The application owner is the initial administrator; other user/group lists are closed by default.
 - Fresh Codex tasks default to workspace access, with full access as a user-selectable maximum.
 - Approval requests are shown to the user and are never automatically accepted by the bridge.
-- App Secrets are encrypted at rest and are not served to the dashboard.
+- App Secrets are encrypted at rest and are never rendered in terminal status output or the QR code.
 - Logs are local and sanitized. Raw task content must not be added to telemetry.
 - Desktop IPC uses a local Unix socket. Any process running as the same macOS user may share that trust boundary; do not run untrusted software under the same account.
 

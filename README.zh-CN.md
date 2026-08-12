@@ -2,7 +2,7 @@
 
 用手机飞书/Lark 控制 Mac 上的 Codex Desktop 任务：不单独安装 Codex CLI，不开放公网 Web 服务，也不用手工进入飞书开发者后台创建机器人。
 
-[English](README.md) · [架构](docs/ARCHITECTURE.md) · [安全](SECURITY.md) · [路线图](ROADMAP.md)
+[English](README.md) · [配置与本地数据](docs/CONFIGURATION.md) · [架构](docs/ARCHITECTURE.md) · [安全](SECURITY.md) · [路线图](ROADMAP.md)
 
 > 当前状态：macOS 早期预览版。App Server 主链路有自动化测试；Desktop IPC 镜像属于实验能力，因为它不是公开文档承诺的稳定接口。
 

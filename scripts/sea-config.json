@@ -1,7 +1,0 @@
-{
-  "main": "dist/desktop-sea.cjs",
-  "output": "release/codex-lark.blob",
-  "disableExperimentalSEAWarning": true,
-  "useSnapshot": false,
-  "useCodeCache": false
-}

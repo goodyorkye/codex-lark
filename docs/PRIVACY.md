@@ -4,7 +4,7 @@
 
 Messages and files sent in Feishu/Lark pass through that platform and the local bridge. Prompts and selected local files are then processed by the Codex Desktop account and services configured on the Mac. Review the privacy and retention terms of both services before use.
 
-`codex-lark` does not add a hosted relay. The setup dashboard is local-only. The project ships no telemetry backend; an optional telemetry adapter can receive only sanitized operational events and must not receive prompts, transcripts, credentials, or file contents.
+`codex-lark` does not add a hosted relay or local web dashboard. The project ships no telemetry backend; an optional telemetry adapter can receive only sanitized operational events and must not receive prompts, transcripts, credentials, or file contents.
 
 ## Local data
 
