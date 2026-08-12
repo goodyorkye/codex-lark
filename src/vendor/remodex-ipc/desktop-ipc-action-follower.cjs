@@ -2286,7 +2286,15 @@ function createDesktopIpcClient({
 
   function sendRequest(method, params) {
     ensureConnected();
-    if (!socket || socket.destroyed) {
+    const initializing = method === "initialize";
+    // `ensureConnected()` starts an asynchronous Unix-socket connection. A
+    // stale socket inode can leave that Socket object looking writable even
+    // though no Desktop IPC server accepted it. Never queue ordinary follower
+    // requests on a merely connecting socket: the request has not reached
+    // Desktop, so callers can safely release stale Desktop ownership and fall
+    // back to the local app-server immediately. The initialize handshake is the
+    // only request allowed before a client id proves the connection is ready.
+    if (!socket || socket.destroyed || (!initializing && !clientId)) {
       return Promise.reject(markDeliveryFailureError(new Error("Desktop IPC is not connected.")));
     }
 
@@ -3522,6 +3530,7 @@ function readThreadId(params) {
 module.exports = {
   applyConversationStateChange,
   buildDesktopTurnsListResult,
+  createDesktopIpcClient,
   createDesktopIpcActionFollower,
   desktopFollowerPayloadForResponse,
   projectDesktopAssistantDeltaNotifications,
