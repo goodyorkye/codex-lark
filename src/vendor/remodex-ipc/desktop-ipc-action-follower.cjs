@@ -1257,6 +1257,23 @@ function createDesktopIpcActionFollower({
         }));
         return true;
       }
+      // Codex Lark may learn that Desktop already owns the rollout only after
+      // its first local thread/resume hits the active-writer guard. At that
+      // point the adapter needs only resume metadata before sending turn/start
+      // through this Desktop follower; canonical JSONL history remains the
+      // authority for later reads. Serve that explicit handoff here instead of
+      // falling through to the competing local writer a second time.
+      if (method === "thread/resume" && message.params?.codexLarkDesktopHandoff === true) {
+        const liveState = boundedDesktopLiveStateForThread(threadId, rawState);
+        sendApplicationResponse(JSON.stringify({
+          id: message.id,
+          result: {
+            thread: projectDesktopConversationStateToThread(threadId, liveState, { now }),
+            remodexDesktopIpcMirror: true,
+          },
+        }));
+        return true;
+      }
       // Falling through only starts a canonical request. It may be a metadata-
       // only resume or may fail before history arrives, so keep the repair
       // signal armed until a live update can force a verified reload.

@@ -94,7 +94,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           : false;
         const isNewThread = !options.threadId || replaceLegacyThread;
         const thread = options.threadId && !replaceLegacyThread
-          ? await client.resumeThread(options.threadId, {
+          ? await resumeThreadWithDesktopHandoff(client, options.threadId, {
               cwd: options.cwd,
               model: options.model,
               approvalPolicy: approvalPolicyFor(options),
@@ -258,6 +258,29 @@ export class CodexAppServerAdapter implements AgentAdapter {
     });
     return this.client;
   }
+}
+
+export async function resumeThreadWithDesktopHandoff(
+  client: Pick<
+    CodexAppServerClient,
+    'resumeThread' | 'resumeDesktopOwnedThread' | 'waitForDesktopThreadState'
+  >,
+  threadId: string,
+  options: Parameters<CodexAppServerClient['resumeThread']>[1] = {},
+): Promise<CodexThread> {
+  try {
+    return await client.resumeThread(threadId, options);
+  } catch (error) {
+    if (!isActiveWriterConflict(error)) throw error;
+    const desktopReady = await client.waitForDesktopThreadState(threadId);
+    if (!desktopReady) throw error;
+    return client.resumeDesktopOwnedThread(threadId, options);
+  }
+}
+
+function isActiveWriterConflict(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /already has an active writer\s*\(-32600\)/i.test(message);
 }
 
 async function shouldReplaceLegacyBridgeThread(

@@ -200,6 +200,36 @@ export class CodexAppServerClient extends EventEmitter {
     return result.thread;
   }
 
+  async resumeDesktopOwnedThread(
+    threadId: string,
+    options: Omit<StartThreadOptions, 'cwd'> & { cwd?: string } = {},
+  ): Promise<CodexThread> {
+    const result = await this.request<{ thread: CodexThread }>('thread/resume', {
+      threadId,
+      codexLarkDesktopHandoff: true,
+      ...(options.cwd ? { cwd: options.cwd } : {}),
+      ...(options.model ? { model: options.model } : {}),
+      ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
+      ...(options.sandbox ? { sandbox: options.sandbox } : {}),
+    });
+    return result.thread;
+  }
+
+  /**
+   * Wait briefly for Codex Desktop to publish the live snapshot requested by a
+   * preceding thread/resume. Desktop may already hold the rollout writer while
+   * its IPC snapshot is still in flight; once this returns true, retrying the
+   * resume is served by the Desktop follower instead of the local app-server.
+   */
+  async waitForDesktopThreadState(threadId: string, timeoutMs = 2_500): Promise<boolean> {
+    const deadline = Date.now() + Math.max(0, timeoutMs);
+    while (Date.now() <= deadline) {
+      if (this.desktopFollower.hasLiveThreadState?.(threadId)) return true;
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    }
+    return false;
+  }
+
   async setThreadName(threadId: string, name: string): Promise<void> {
     await this.request('thread/name/set', { threadId, name });
   }

@@ -2,13 +2,36 @@ import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CodexAppServerClient } from '../../../src/codex/app-server/client';
 import type { ApprovalRequest } from '../../../src/codex/app-server/protocol';
-import { CodexAppServerAdapter } from '../../../src/agent/codex/app-server-adapter';
+import {
+  CodexAppServerAdapter,
+  resumeThreadWithDesktopHandoff,
+} from '../../../src/agent/codex/app-server-adapter';
 import type { AgentEvent } from '../../../src/agent/types';
 
 describe.skipIf(process.platform === 'win32')('Codex App Server integration', () => {
+  it('hands an active-writer resume back to Desktop after its IPC snapshot arrives', async () => {
+    const resumeThread = vi.fn()
+      .mockRejectedValueOnce(new Error('thread thread-1 already has an active writer (-32600)'));
+    const resumeDesktopOwnedThread = vi.fn()
+      .mockResolvedValueOnce({ id: 'thread-1', cwd: '/tmp/project' });
+    const waitForDesktopThreadState = vi.fn(async () => true);
+
+    await expect(resumeThreadWithDesktopHandoff({
+      resumeThread,
+      resumeDesktopOwnedThread,
+      waitForDesktopThreadState,
+    } as never, 'thread-1', { cwd: '/tmp/project' })).resolves.toMatchObject({
+      id: 'thread-1',
+    });
+
+    expect(waitForDesktopThreadState).toHaveBeenCalledWith('thread-1');
+    expect(resumeThread).toHaveBeenCalledTimes(1);
+    expect(resumeDesktopOwnedThread).toHaveBeenCalledWith('thread-1', { cwd: '/tmp/project' });
+  });
+
   it('initializes, lists desktop tasks/models, and resolves approvals over JSONL', async () => {
     const binary = await fakeAppServer();
     const client = new CodexAppServerClient({
