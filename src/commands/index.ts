@@ -274,6 +274,7 @@ export async function runCommandHandler(
   } catch (err) {
     log.fail('command', err, { cmd: name });
     reportMetric('command_fail', 1, { step: 'handler' });
+    await reply(ctx, '操作失败，请稍后重试；如果持续失败，请在 Mac 上重新打开 Codex Lark。');
   }
   return true;
 }
@@ -364,12 +365,7 @@ async function handleProjects(_args: string, ctx: CommandContext): Promise<void>
     });
   }
   const projects = [...grouped.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-  await sendManagedCard(
-    ctx.channel,
-    ctx.msg.chatId,
-    projectsCard(projects, effectiveWorkspaceCwd(ctx)),
-    { replyTo: ctx.msg.messageId },
-  );
+  await sendCodexCard(ctx, projectsCard(projects, effectiveWorkspaceCwd(ctx)));
 }
 
 async function handleProject(args: string, ctx: CommandContext): Promise<void> {
@@ -391,12 +387,7 @@ async function handleTasks(args: string, ctx: CommandContext): Promise<void> {
   if (args.trim() === 'recent') {
     const threads = await ctx.agent.listThreads({ limit: 100 });
     const currentThreadId = currentCodexThreadId(ctx);
-    await sendManagedCard(
-      ctx.channel,
-      ctx.msg.chatId,
-      recentTasksCard(threads, currentThreadId),
-      { replyTo: ctx.msg.messageId },
-    );
+    await sendCodexCard(ctx, recentTasksCard(threads, currentThreadId));
     return;
   }
   const cwd = effectiveWorkspaceCwd(ctx);
@@ -408,12 +399,7 @@ async function handleTasks(args: string, ctx: CommandContext): Promise<void> {
   const active = ctx.sessionCatalog && ctx.sessionCatalogIdentity
     ? ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity)
     : undefined;
-  await sendManagedCard(
-    ctx.channel,
-    ctx.msg.chatId,
-    tasksCard(threads, active?.threadId, cwd),
-    { replyTo: ctx.msg.messageId },
-  );
+  await sendCodexCard(ctx, tasksCard(threads, active?.threadId, cwd));
 }
 
 async function handleTask(args: string, ctx: CommandContext): Promise<void> {
@@ -432,12 +418,7 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
   }
   const thread = await ctx.agent.readThread(threadId);
   if (action === 'show') {
-    await sendManagedCard(
-      ctx.channel,
-      ctx.msg.chatId,
-      taskDetailCard(thread),
-      { replyTo: ctx.msg.messageId },
-    );
+    await sendCodexCard(ctx, taskDetailCard(thread));
     return;
   }
   if (action !== 'use') {
@@ -509,10 +490,13 @@ async function handleModels(_args: string, ctx: CommandContext): Promise<void> {
     return;
   }
   const models = await ctx.agent.listModels();
-  await sendManagedCard(
-    ctx.channel,
+  await sendCodexCard(ctx, modelsCard(models, ctx.sessions.getModel(ctx.scope)));
+}
+
+async function sendCodexCard(ctx: CommandContext, card: object): Promise<void> {
+  await ctx.channel.send(
     ctx.msg.chatId,
-    modelsCard(models, ctx.sessions.getModel(ctx.scope)),
+    { card },
     { replyTo: ctx.msg.messageId },
   );
 }

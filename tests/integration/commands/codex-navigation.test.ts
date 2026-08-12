@@ -25,6 +25,7 @@ describe('Codex phone navigation commands', () => {
     await expect(h.run('/tasks recent')).resolves.toBe(true);
 
     expect(h.agent.listThreads).toHaveBeenCalledWith({ limit: 100 });
+    expect(h.channel.createCard).not.toHaveBeenCalled();
     const card = JSON.stringify(h.channel.sent.at(-1)?.content);
     expect(card.indexOf('项目 B 的任务')).toBeLessThan(card.indexOf('项目 A 的任务'));
     expect(card).toContain('workspace');
@@ -65,6 +66,7 @@ async function createHarness(): Promise<{
   ]);
   const projectBRealpath = await realpath(projectB);
   const channel = createFakeChannel();
+  channel.createCard = vi.fn(channel.createCard.bind(channel));
   const sessions = new SessionStore(join(tmp.profile, 'sessions.json'));
   const workspaces = new WorkspaceStore(join(tmp.profile, 'workspaces.json'));
   workspaces.setCwd('chat-1', tmp.workspace);
