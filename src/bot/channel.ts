@@ -17,7 +17,11 @@ import { handleCardAction } from '../card/dispatcher';
 import { CallbackAuth } from '../card/callback-auth';
 import { CallbackNonceStore } from '../card/callback-store';
 import { renderCard } from '../card/run-renderer';
-import { codexRemoteNavigationCard, compositionInputCard } from '../card/codex-cards';
+import {
+  codexRemoteNavigationCard,
+  compositionInputCard,
+  compositionInputSummary,
+} from '../card/codex-cards';
 import { sendManagedCard, updateManagedCard } from '../card/managed';
 import {
   finalizeIfRunning,
@@ -644,6 +648,13 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
       textSegments: state.textSegments,
       images: state.images,
       files: state.files,
+    });
+    await channel.send(msg.chatId, {
+      text: `✅ ${compositionInputSummary(state).replace(/\*\*/g, '')}。继续发送，完成后回复“发送”。`,
+    }).catch((error) => {
+      log.warn('compose', 'ack-failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
     return;
   }

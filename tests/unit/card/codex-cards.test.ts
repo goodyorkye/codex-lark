@@ -4,6 +4,7 @@ import {
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
   compositionInputCard,
+  compositionInputSummary,
   latestTurnCard,
   modelsCard,
   projectsCard,
@@ -200,6 +201,13 @@ describe('Codex navigation cards', () => {
     for (const action of ['compose.send', 'compose.undo', 'compose.clear', 'compose.cancel']) {
       expect(rendered).toContain(action);
     }
+    expect(compositionInputSummary({
+      active: true,
+      messages: 4,
+      textSegments: 1,
+      images: 2,
+      files: 1,
+    })).toBe('**已收集**：1 段文字 · 2 张图片 · 1 个文件');
   });
 
   it('shows only the focused Codex phone remote command surface', () => {

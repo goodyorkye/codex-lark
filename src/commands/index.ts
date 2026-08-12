@@ -349,6 +349,7 @@ async function handleNew(args: string, ctx: CommandContext): Promise<void> {
   }
 
   const wasRunning = ctx.activeRuns.interrupt(ctx.scope);
+  await discardCompositionForContextChange(ctx, '新建任务');
   if (ctx.sessionCatalog && ctx.sessionCatalogIdentity) {
     ctx.sessionCatalog.archiveActive({
       ...ctx.sessionCatalogIdentity,
@@ -480,6 +481,7 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
     await reply(ctx, policy.rejectReason.userVisible);
     return;
   }
+  await discardCompositionForContextChange(ctx, '切换任务');
   ctx.sessionCatalog.upsertActive({
     scopeId: ctx.scope,
     agentId: 'codex',
@@ -593,6 +595,23 @@ async function finishCompositionCard(
     }
   }
   await sendManagedCard(ctx.channel, ctx.msg.chatId, card);
+}
+
+async function discardCompositionForContextChange(
+  ctx: CommandContext,
+  reason: '切换任务' | '切换项目' | '新建任务',
+): Promise<void> {
+  if (!ctx.compositions?.isActive(ctx.scope)) return;
+  const state = ctx.compositions.cancel(ctx.scope);
+  await finishCompositionCard(ctx, state, 'cancelled');
+  await ctx.channel.send(ctx.msg.chatId, {
+    text: `已${reason}，组合输入草稿已清空。`,
+  }).catch((error) => {
+    log.warn('compose', 'context-reset-notice-failed', {
+      reason,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
 
 async function handleModels(_args: string, ctx: CommandContext): Promise<void> {
@@ -774,6 +793,7 @@ async function switchWorkspace(input: string, ctx: CommandContext): Promise<stri
     await reply(ctx, workspace.userVisible);
     return undefined;
   }
+  await discardCompositionForContextChange(ctx, '切换项目');
   ctx.activeRuns.interrupt(ctx.scope);
   ctx.workspaces.setCwd(ctx.scope, workspace.cwdRealpath);
   ctx.sessions.clear(ctx.scope);

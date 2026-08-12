@@ -270,7 +270,7 @@ export function compositionInputCard(
   state: CompositionSnapshot,
   terminal?: 'sent' | 'queued' | 'cancelled',
 ): object {
-  const counts = compositionCountsText(state);
+  const counts = compositionInputSummary(state);
   if (terminal === 'sent') {
     return card('组合输入', [{ tag: 'markdown', content: `✅ 已提交，将作为同一轮发送给 Codex。\n\n${counts}` }]);
   }
@@ -416,7 +416,7 @@ function remoteNavigationActions(hasCurrentTask = false): object[] {
   ];
 }
 
-function compositionCountsText(state: CompositionSnapshot): string {
+export function compositionInputSummary(state: CompositionSnapshot): string {
   const parts = [
     `${state.textSegments} 段文字`,
     `${state.images} 张图片`,

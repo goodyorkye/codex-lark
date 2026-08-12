@@ -107,6 +107,42 @@ describe('Codex phone navigation commands', () => {
     expect(card).not.toContain('刚刚的问题');
   });
 
+  it('clears and exits composition input when switching tasks', async () => {
+    const h = await createHarness();
+    await h.run('/compose');
+    h.compositions.add('chat-1', message('属于原任务的草稿'));
+
+    await expect(h.run('/task use thread-c')).resolves.toBe(true);
+
+    expect(h.compositions.isActive('chat-1')).toBe(false);
+    expect(h.flushed).toHaveLength(0);
+    expect(JSON.stringify(h.channel.sent)).toContain('已切换任务，组合输入草稿已清空');
+  });
+
+  it('clears and exits composition input when switching projects', async () => {
+    const h = await createHarness();
+    await h.run('/compose');
+    h.compositions.add('chat-1', message('属于原项目的草稿'));
+
+    await expect(h.run(`/project use ${h.projectB}`)).resolves.toBe(true);
+
+    expect(h.compositions.isActive('chat-1')).toBe(false);
+    expect(h.flushed).toHaveLength(0);
+    expect(JSON.stringify(h.channel.sent)).toContain('已切换项目，组合输入草稿已清空');
+  });
+
+  it('clears and exits composition input when starting a new task', async () => {
+    const h = await createHarness();
+    await h.run('/compose');
+    h.compositions.add('chat-1', message('属于原任务的草稿'));
+
+    await expect(h.run('/new')).resolves.toBe(true);
+
+    expect(h.compositions.isActive('chat-1')).toBe(false);
+    expect(h.flushed).toHaveLength(0);
+    expect(JSON.stringify(h.channel.sent)).toContain('已新建任务，组合输入草稿已清空');
+  });
+
   it('submits collected text and images as one queued Codex turn', async () => {
     const h = await createHarness();
 
