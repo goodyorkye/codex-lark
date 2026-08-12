@@ -381,16 +381,18 @@ async function handleTasks(args: string, ctx: CommandContext): Promise<void> {
     await sendCodexCard(ctx, recentTasksCard(threads, currentThreadId));
     return;
   }
+  const pageMatch = /^page\s+(\d+)$/.exec(args.trim());
+  const page = pageMatch ? Number(pageMatch[1]) : 1;
   const cwd = effectiveWorkspaceCwd(ctx);
   if (!cwd) {
     await reply(ctx, '请先用 `/projects` 选择一个项目。');
     return;
   }
-  const threads = await ctx.agent.listThreads({ cwd, limit: 50 });
+  const threads = await ctx.agent.listThreads({ cwd, limit: 200 });
   const active = ctx.sessionCatalog && ctx.sessionCatalogIdentity
     ? ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity)
     : undefined;
-  await sendCodexCard(ctx, tasksCard(threads, active?.threadId, cwd));
+  await sendCodexCard(ctx, tasksCard(threads, active?.threadId, cwd, page));
 }
 
 async function handleTask(args: string, ctx: CommandContext): Promise<void> {

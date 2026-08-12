@@ -17,8 +17,19 @@ describe('Codex navigation cards', () => {
     expect(projects).toContain('project.use');
     expect(projects).toContain('选择');
     expect(projects).not.toContain('打开');
-    expect(JSON.stringify(tasksCard([{ id: 'thread-1', cwd: '/tmp/demo', preview: 'Fix tests' }], 'thread-1')))
-      .toContain('task.use');
+    const taskCard = tasksCard([{
+      id: 'thread-1',
+      cwd: '/tmp/demo',
+      preview: 'Fix tests',
+      model: 'gpt-test',
+      updatedAt: Date.now(),
+    }], 'thread-1', '/tmp/demo');
+    const tasks = JSON.stringify(taskCard);
+    expect(tasks).toContain('demo · 任务列表');
+    expect(tasks).toContain('task.use');
+    expect(tasks).toContain('最近更新');
+    expect(collectMarkdownContents(taskCard)).toContain('模型：gpt\\-test');
+    expect(collectMarkdownContents(taskCard)).not.toContain('thread-1');
   });
 
   it('renders model selection and readable conversation detail', () => {
@@ -50,6 +61,25 @@ describe('Codex navigation cards', () => {
     expect(lastPage).toContain('上一页');
     expect(lastPage).not.toContain('下一页');
     expect(collectTags(projectsCard(projects))).not.toContain('note');
+  });
+
+  it('paginates project task lists without exposing internal task ids', () => {
+    const tasks = Array.from({ length: 22 }, (_, index) => ({
+      id: `internal-thread-${index}`,
+      cwd: '/tmp/demo',
+      name: `任务 ${index}`,
+      updatedAt: Date.now() - index * 60_000,
+    }));
+    const firstCard = tasksCard(tasks, undefined, '/tmp/demo', 1);
+    const firstPage = JSON.stringify(firstCard);
+    expect(firstPage).toContain('第 1/3 页');
+    expect(firstPage).toContain('任务 0');
+    expect(firstPage).not.toContain('任务 10');
+    expect(collectMarkdownContents(firstCard)).not.toContain('internal-thread-0');
+    const lastPage = JSON.stringify(tasksCard(tasks, undefined, '/tmp/demo', 3));
+    expect(lastPage).toContain('任务 21');
+    expect(lastPage).toContain('上一页');
+    expect(lastPage).not.toContain('下一页');
   });
 
   it('renders a cross-project recent task switcher', () => {
@@ -129,4 +159,14 @@ function collectTags(value: unknown): string[] {
     ...(typeof record.tag === 'string' ? [record.tag] : []),
     ...Object.values(record).flatMap(collectTags),
   ];
+}
+
+function collectMarkdownContents(value: unknown): string {
+  if (Array.isArray(value)) return value.map(collectMarkdownContents).join('\n');
+  if (!value || typeof value !== 'object') return '';
+  const record = value as Record<string, unknown>;
+  return [
+    ...(record.tag === 'markdown' && typeof record.content === 'string' ? [record.content] : []),
+    ...Object.values(record).map(collectMarkdownContents),
+  ].join('\n');
 }

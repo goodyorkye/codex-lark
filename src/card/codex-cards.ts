@@ -143,28 +143,43 @@ export function tasksCard(
   threads: CodexThread[],
   currentThreadId?: string,
   cwd?: string,
+  requestedPage = 1,
 ): object {
-  const visible = threads.slice(0, 20);
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(threads.length / pageSize));
+  const page = Math.min(pageCount, Math.max(1, Math.trunc(requestedPage) || 1));
+  const visible = threads.slice((page - 1) * pageSize, page * pageSize);
+  const rows: object[] = visible.map((thread) => ({
+    tag: 'column_set',
+    flex_mode: 'none',
+    columns: [{
+      tag: 'column',
+      width: 'weighted',
+      weight: 1,
+      elements: [{
+        tag: 'markdown',
+        content: `${thread.id === currentThreadId ? '📍 ' : ''}**${escapeMd(threadTitle(thread))}**\n${taskListMetadata(thread)}`,
+      }],
+    }, {
+      tag: 'column',
+      width: 'auto',
+      elements: [button('继续', 'task.use', thread.id)],
+    }],
+  }));
+  if (threads.length && pageCount > 1) {
+    rows.push({
+      tag: 'markdown',
+      content: `第 ${page}/${pageCount} 页 · 共 ${threads.length} 个任务`,
+    });
+    rows.push(buttonRow([
+      ...(page > 1 ? [actionButton('上一页', 'tasks.page', 'default', String(page - 1))] : []),
+      ...(page < pageCount ? [actionButton('下一页', 'tasks.page', 'primary', String(page + 1))] : []),
+    ]));
+  }
   return card(
-    cwd ? `${basename(cwd) || cwd} · 任务` : 'Codex 任务',
+    cwd ? `${basename(cwd) || cwd} · 任务列表` : '任务列表',
     (threads.length
-      ? appendOverflow(visible.map((thread) => ({
-          tag: 'column_set',
-          flex_mode: 'none',
-          columns: [{
-            tag: 'column',
-            width: 'weighted',
-            weight: 1,
-            elements: [{
-              tag: 'markdown',
-              content: `${thread.id === currentThreadId ? '📍 ' : ''}**${escapeMd(threadTitle(thread))}**\n${escapeMd(shortId(thread.id))}${thread.model ? ` · ${escapeMd(thread.model)}` : ''}`,
-            }],
-          }, {
-            tag: 'column',
-            width: 'auto',
-            elements: [button('继续', 'task.use', thread.id)],
-          }],
-        })), threads.length, visible.length)
+      ? rows
       : [{ tag: 'markdown', content: '当前项目还没有任务。直接发送消息即可创建。' }])
       .concat([navigationActions('tasks.recent')]),
   );
@@ -324,6 +339,13 @@ function threadTitle(thread: CodexThread): string {
 
 function shortId(id: string): string {
   return id.length > 16 ? `${id.slice(0, 8)}…${id.slice(-6)}` : id;
+}
+
+function taskListMetadata(thread: CodexThread): string {
+  const updated = `最近更新：${relativeTime(thread.updatedAt ?? thread.createdAt)}`;
+  return thread.model
+    ? `${updated} · 模型：${escapeMd(thread.model)}`
+    : updated;
 }
 
 function truncate(text: string, max: number): string {

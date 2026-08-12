@@ -58,7 +58,7 @@ describe('Codex phone navigation commands', () => {
 
     const selected = h.workspaces.cwdFor('chat-1');
     expect(selected).toMatch(/project-b$/);
-    expect(h.agent.listThreads).toHaveBeenLastCalledWith({ cwd: selected, limit: 50 });
+    expect(h.agent.listThreads).toHaveBeenLastCalledWith({ cwd: selected, limit: 200 });
     const card = JSON.stringify(h.channel.sent.at(-1)?.content);
     expect(card).toContain('任务');
     expect(card).toContain('项目 B 的任务');
