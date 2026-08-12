@@ -63,6 +63,7 @@ import { fetchQuotedContext, type QuotedContext } from './quote';
 import { addWorkingReaction, removeReaction } from './reaction';
 import { fetchKnownChats } from './lark-info';
 import type { AppPaths } from '../config/app-paths';
+import { sendConnectionNavigation } from './connection-navigation';
 
 const DEBOUNCE_MS = 600;
 const STREAM_TERMINAL_GRACE_MS = 3000;
@@ -281,6 +282,16 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
 
   // Counter for stdout reconnect escalation; reset on `reconnected`.
   let consecutiveReconnects = 0;
+  let lastConnectionNavigationAt = 0;
+  const pushConnectionNavigation = (): void => {
+    const now = Date.now();
+    // Some SDK builds emit `reconnected` immediately after the initial ready
+    // callback. Treat that as the same connection so startup produces one card.
+    if (now - lastConnectionNavigationAt < 5_000) return;
+    lastConnectionNavigationAt = now;
+    void sendConnectionNavigation({ channel, agent, sessionCatalog, controls })
+      .catch((err) => log.fail('navigation', err, { step: 'connection-push' }));
+  };
 
   channel.on({
     message: async (msg) => {
@@ -357,6 +368,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
         log.info('ws', 'reconnected');
       }
       consecutiveReconnects = 0;
+      pushConnectionNavigation();
     },
     // Classify common WS errors into the `network` phase so /doctor and grep
     // can find them without scanning generic `ws.fail` entries.
@@ -400,6 +412,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
     appId: cfg.accounts.app.id,
     procId: controls.processId,
   });
+  pushConnectionNavigation();
   console.log('正在监听消息。按 Ctrl+C 退出。\n');
 
   // App-level keepalive: 15s probe + wake-up detection + HTTP reachability.
