@@ -6,12 +6,12 @@
   "packageManager": "pnpm@10.33.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/codex-lark/codex-lark.git"
+    "url": "git+https://github.com/goodyorkye/codex-lark.git"
   },
   "bugs": {
-    "url": "https://github.com/codex-lark/codex-lark/issues"
+    "url": "https://github.com/goodyorkye/codex-lark/issues"
   },
-  "homepage": "https://github.com/codex-lark/codex-lark#readme",
+  "homepage": "https://github.com/goodyorkye/codex-lark#readme",
   "bin": {
     "codex-lark": "./bin/codex-lark.mjs"
   },
