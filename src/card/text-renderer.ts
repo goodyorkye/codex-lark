@@ -39,7 +39,7 @@ function renderBlock(block: Block): string {
   }
   if (block.kind === 'tool') return toolLine(block.tool);
   if (block.approval.status === 'resolved') return `✓ ${block.approval.title}已处理`;
-  return `🔐 **${block.approval.title}**\n${block.approval.detail}\n请在飞书卡片模式中处理，或发送 \`/approval accept ${block.approval.id}\`。`;
+  return `🔐 **${block.approval.title}**\n${block.approval.detail}\n请在单独发送的审批卡片中处理，或发送 \`/approval accept ${block.approval.id}\`。`;
 }
 
 /**

@@ -119,9 +119,7 @@ export function safeJsonStringify(value: unknown): string {
 export function projectAgentPromptForCodex(prompt: string): CodexPromptProjection {
   const userSection = readPromptSection(prompt, 'user_input');
   const user = userSection ? parseJsonObject(userSection) : undefined;
-  const text = typeof user?.text === 'string' && user.text.trim()
-    ? user.text
-    : prompt;
+  const text = typeof user?.text === 'string' ? user.text : prompt;
   return { text, title: promptTitle(text) };
 }
 

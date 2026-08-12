@@ -47,6 +47,7 @@ const IMAGE_MIME_EXT: Record<string, string> = {
 const MIME_EXT: Record<string, string> = {
   ...IMAGE_MIME_EXT,
   'audio/aac': 'aac',
+  'audio/amr': 'amr',
   'audio/mpeg': 'mp3',
   'audio/mp4': 'm4a',
   'audio/ogg': 'ogg',

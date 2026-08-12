@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { extname, join } from 'node:path';
 import type { LarkChannel, ResourceDescriptor } from '@larksuite/channel';
 import { paths } from '../config/paths';
 import { log } from '../core/logger';
@@ -96,7 +96,7 @@ export class MediaCache {
     const tmpStat = await stat(tmpPath);
     const hash = await hashFile(tmpPath);
     const kind = kindForDownloadedResource(resourceKind, contentType);
-    const mime = effectiveMime(kind, contentType);
+    const mime = effectiveMime(kind, contentType, r.fileName);
     const ext = safeExtensionForMime(mime);
     const absPath = join(this.rootDir, `${hash}.${ext}`);
     try {
@@ -136,9 +136,30 @@ function kindForDownloadedResource(
   return resourceKind;
 }
 
-function effectiveMime(kind: AttachmentKind, contentType: string | undefined): string {
+function effectiveMime(
+  kind: AttachmentKind,
+  contentType: string | undefined,
+  originalName: string | undefined,
+): string {
   const mime = normalizedMime(contentType);
+  if (kind === 'audio') {
+    if (mime.startsWith('audio/') || mime === 'application/ogg') return mime;
+    return audioMimeForName(originalName) ?? defaultMime(kind);
+  }
   return !mime || mime === 'application/octet-stream' ? defaultMime(kind) : mime;
+}
+
+function audioMimeForName(originalName: string | undefined): string | undefined {
+  const extension = originalName ? extname(originalName).toLowerCase() : '';
+  return ({
+    '.aac': 'audio/aac',
+    '.amr': 'audio/amr',
+    '.m4a': 'audio/mp4',
+    '.mp3': 'audio/mpeg',
+    '.ogg': 'audio/ogg',
+    '.opus': 'audio/opus',
+    '.wav': 'audio/wav',
+  } as Record<string, string>)[extension];
 }
 
 function normalizedMime(contentType: string | undefined): string {

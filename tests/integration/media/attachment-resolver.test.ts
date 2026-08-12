@@ -70,6 +70,22 @@ describe('hash media attachment resolver', () => {
     expect(attachment?.absPath).toMatch(/\.ogg$/);
   });
 
+  it('recovers a safe audio extension when Feishu returns a vendor MIME', async () => {
+    const root = await tempDir();
+    const cache = new MediaCache(fakeChannel(
+      Buffer.from('voice-bytes'),
+      'application/vnd.feishu.voice',
+    ), root);
+
+    const [attachment] = await cache.resolve([{
+      messageId: 'om_voice',
+      resource: { type: 'audio', fileKey: 'voice_key', fileName: 'voice.opus' } as never,
+    }]);
+
+    expect(attachment).toMatchObject({ kind: 'audio', mime: 'audio/opus', decision: 'accepted' });
+    expect(attachment?.absPath).toMatch(/\.opus$/);
+  });
+
   it('garbage-collects old cache files by TTL', async () => {
     const root = await tempDir();
     const oldPath = join(root, 'old.bin');

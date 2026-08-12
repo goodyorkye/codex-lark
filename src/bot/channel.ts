@@ -16,7 +16,7 @@ import type { AgentAdapter, AgentEvent } from '../agent/types';
 import { handleCardAction } from '../card/dispatcher';
 import { CallbackAuth } from '../card/callback-auth';
 import { CallbackNonceStore } from '../card/callback-store';
-import { renderCard } from '../card/run-renderer';
+import { renderApprovalCard, renderCard } from '../card/run-renderer';
 import {
   codexRemoteNavigationCard,
   compositionInputCard,
@@ -882,6 +882,26 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
       ? { codexNavigation: { cwd, hasCurrentTask: true } }
       : {}),
   };
+  const standaloneApprovalCards = new Map<string, string>();
+  const syncStandaloneApprovalCards = async (state: RunState): Promise<void> => {
+    if (replyMode === 'card') return;
+    for (const block of state.blocks) {
+      if (block.kind !== 'approval') continue;
+      const approval = block.approval;
+      const messageId = standaloneApprovalCards.get(approval.id);
+      const card = renderApprovalCard(approval, cardRenderOptions);
+      if (!messageId && approval.status === 'pending') {
+        const sent = await sendManagedCard(channel, chatId, card, sendOpts);
+        standaloneApprovalCards.set(approval.id, sent.messageId);
+      } else if (messageId && approval.status === 'resolved') {
+        await updateManagedCard(channel, messageId, card).catch((error) => {
+          log.warn('approval', 'standalone-card-update-failed', {
+            message: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }
+    }
+  };
 
   // For non-card modes Claude's output doesn't surface visually until either
   // a first streamed token (markdown mode) or the whole run ends (text mode).
@@ -952,6 +972,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
         recordSession,
         async (state) => {
           latestState = state;
+          await syncStandaloneApprovalCards(state);
           if (markdownCtrl) {
             await markdownCtrl.setContent(renderText(filterForPrefs(state)));
           }
@@ -992,7 +1013,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
         scope,
         idleTimeoutMs,
         recordSession,
-        async () => {},
+        syncStandaloneApprovalCards,
       );
       const body = renderText(filterForPrefs(finalState));
       if (body.trim()) {
@@ -1300,7 +1321,7 @@ function buildPrompt(
     texts.length > 0
       ? texts.join('\n\n')
       : attachments.length > 0
-        ? '请看下面的附件。'
+        ? ''
         : '（对方发来一条没有正文的消息——通常是只 @ 了你的唤醒（ping）。请简短回应。）';
 
   const senderType = senderTypeOf(first);

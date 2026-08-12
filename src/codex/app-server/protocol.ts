@@ -73,6 +73,7 @@ export interface ApprovalRequest {
   method:
     | 'item/commandExecution/requestApproval'
     | 'item/fileChange/requestApproval'
+    | 'item/fileRead/requestApproval'
     | 'item/permissions/requestApproval';
   threadId: string;
   turnId: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderCard } from '../../../src/card/run-renderer.js';
+import { renderApprovalCard, renderCard } from '../../../src/card/run-renderer.js';
 import {
   initialState,
   markIdleTimeout,
@@ -117,16 +117,23 @@ describe('run card renderer snapshots', () => {
   });
 
   it('keeps approval controls compatible with Feishu card schema V2', () => {
-    const approval = renderCard(stateFrom([{
+    const state = stateFrom([{
       type: 'approval_request',
       approvalId: 'approval-1',
       title: '运行命令',
       detail: 'pnpm test',
       allowForSession: true,
-    }]));
+    }]);
+    const approval = renderCard(state);
     expect(collectTags(approval)).not.toContain('action');
     expect(JSON.stringify(approval)).toContain('approval.accept');
     expect(JSON.stringify(approval)).toContain('approval.decline');
+    const block = state.blocks.find((candidate) => candidate.kind === 'approval');
+    expect(block?.kind).toBe('approval');
+    if (block?.kind === 'approval') {
+      expect(JSON.stringify(renderApprovalCard(block.approval))).toContain('等待审批');
+      expect(JSON.stringify(renderApprovalCard(block.approval))).toContain('approval.accept');
+    }
   });
 
   it('keeps local paths in user-visible cards and text fallbacks', () => {

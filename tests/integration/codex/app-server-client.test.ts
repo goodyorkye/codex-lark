@@ -50,9 +50,31 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     const approvalPromise = once(client, 'approval') as Promise<[ApprovalRequest]>;
     await client.startTurn({ threadId: 'thread-1', text: 'hello' });
     const [approval] = await approvalPromise;
-    expect(approval).toMatchObject({ threadId: 'thread-1', turnId: 'turn-1' });
+    expect(approval).toMatchObject({
+      method: 'item/fileRead/requestApproval',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      title: '文件读取审批',
+    });
     await client.resolveApproval(approval.requestId, 'acceptForSession');
     expect(client.pendingApprovals()).toHaveLength(0);
+    await client.stop();
+  });
+
+  it('sends attachment-only audio without synthetic text input', async () => {
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-audio-log-')), 'requests.jsonl');
+    const client = new CodexAppServerClient({
+      binaryPath: await fakeAppServer(requestLog),
+      env: { ...process.env, CODEX_LARK_DESKTOP_IPC: '0' },
+      requestTimeoutMs: 3_000,
+    });
+    await client.start();
+    await client.startTurn({ threadId: 'thread-1', text: '', audios: ['/tmp/voice.opus'] });
+
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.find((message) => message.method === 'turn/start')?.params.input).toEqual([
+      { type: 'localAudio', path: '/tmp/voice.opus' },
+    ]);
     await client.stop();
   });
 
@@ -160,7 +182,7 @@ rl.on('line', (line) => {
   if (message.method === 'thread/name/set') return send({ id: message.id, result: {} });
   if (message.method === 'turn/start') {
     send({ id: message.id, result: { turn: { id: 'turn-1', status: 'inProgress' } } });
-    send({ id: 900, method: 'item/commandExecution/requestApproval', params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', command: 'echo hello', cwd: '/tmp/project', reason: 'test' } });
+    send({ id: 900, method: 'item/fileRead/requestApproval', params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', grantRoot: '/tmp/voice.opus', reason: 'read audio' } });
     send({ method: 'item/agentMessage/delta', params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'answer-1', delta: 'hello from desktop' } });
     send({ method: 'turn/completed', params: { threadId: 'thread-1', turn: { id: 'turn-1', status: 'completed' } } });
     return;

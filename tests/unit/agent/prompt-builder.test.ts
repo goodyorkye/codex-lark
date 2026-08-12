@@ -133,6 +133,21 @@ describe('agent prompt builder', () => {
     });
   });
 
+  it('keeps attachment-only Codex input free of synthetic visible text', () => {
+    const prompt = buildAgentPrompt({
+      context: {
+        chatId: 'oc_dm',
+        chatType: 'p2p',
+        senderId: 'ou_owner',
+        source: 'im',
+      },
+      userInput: '',
+      attachments: [{ path: '/tmp/voice.opus', kind: 'audio', decision: 'accepted' }],
+    });
+
+    expect(projectAgentPromptForCodex(prompt)).toEqual({ text: '', title: undefined });
+  });
+
   it('keeps bridge agents inside the current lark-channel profile by default', () => {
     const source = readFileSync(join(process.cwd(), 'src/bot/channel.ts'), 'utf8');
 

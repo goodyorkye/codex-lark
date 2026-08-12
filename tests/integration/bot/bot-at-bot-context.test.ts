@@ -31,6 +31,8 @@ interface MessageHandlerMap {
 }
 
 interface FakeLarkChannel {
+  createdCards: unknown[];
+  updatedCards: unknown[];
   botIdentity: { openId: string; name: string };
   rawClient: {
     request: ReturnType<typeof vi.fn>;
@@ -58,7 +60,9 @@ interface FakeLarkChannel {
   disconnect(): Promise<void>;
   getChatMode(chatId: string): Promise<'group' | 'topic'>;
   getConnectionStatus(): { state: 'connected'; reconnectAttempts: number };
-  send(chatId: string, content: unknown, options?: unknown): Promise<void>;
+  createCard(card: unknown): Promise<{ cardId: string }>;
+  updateCardById(cardId: string, card: unknown, sequence: number): Promise<void>;
+  send(chatId: string, content: unknown, options?: unknown): Promise<{ messageId: string }>;
   stream(chatId: string, input: unknown, options?: unknown): Promise<void>;
 }
 
@@ -81,6 +85,29 @@ describe('bot identity injection into the agent adapter', () => {
 });
 
 describe('sender identity in bridge_context', () => {
+  it('sends an actionable approval card even in markdown reply mode', async () => {
+    const h = await createHarness();
+    h.agent.setEvents([
+      {
+        type: 'approval_request',
+        approvalId: 'approval-file-read',
+        title: '文件读取审批',
+        detail: '/tmp/voice.opus',
+        allowForSession: true,
+      },
+      { type: 'done', terminationReason: 'normal' },
+    ]);
+    await startTestBridge(h);
+
+    await h.channel.handlers.message?.(message({ messageId: 'om_approval', content: '处理语音' }));
+    await waitFor(() => h.channel.createdCards.length === 1);
+
+    const card = JSON.stringify(h.channel.createdCards[0]);
+    expect(card).toContain('文件读取审批');
+    expect(card).toContain('approval.accept');
+    expect(card).toContain('approval.decline');
+  });
+
   it('marks a bot sender via raw sender_type and injects botOpenId and mentions', async () => {
     const h = await createHarness();
     await startTestBridge(h);
@@ -300,8 +327,14 @@ async function startTestBridge(h: {
 
 function createFakeLarkChannel(): FakeLarkChannel & { handlers: MessageHandlerMap } {
   const handlers: MessageHandlerMap = {};
+  const createdCards: unknown[] = [];
+  const updatedCards: unknown[] = [];
+  let nextCardId = 1;
+  let nextMessageId = 1;
   return {
     handlers,
+    createdCards,
+    updatedCards,
     botIdentity: { openId: 'ou_bot', name: 'Bridge' },
     rawClient: {
       request: vi.fn(async () => ({ data: { items: [] } })),
@@ -337,7 +370,16 @@ function createFakeLarkChannel(): FakeLarkChannel & { handlers: MessageHandlerMa
     getConnectionStatus() {
       return { state: 'connected', reconnectAttempts: 0 };
     },
-    async send() {},
+    async createCard(card) {
+      createdCards.push(card);
+      return { cardId: `card-${nextCardId++}` };
+    },
+    async updateCardById(_cardId, card) {
+      updatedCards.push(card);
+    },
+    async send() {
+      return { messageId: `om-sent-${nextMessageId++}` };
+    },
     async stream(_chatId, input) {
       if (isMarkdownStreamInput(input)) {
         await input.markdown({ setContent: async () => {} });

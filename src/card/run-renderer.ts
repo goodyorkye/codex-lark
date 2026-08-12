@@ -74,6 +74,20 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
   };
 }
 
+export function renderApprovalCard(
+  approval: ApprovalEntry,
+  options: RunCardRenderOptions = {},
+): object {
+  return {
+    schema: '2.0',
+    config: {
+      streaming_mode: false,
+      summary: { content: approval.status === 'pending' ? `等待审批：${approval.title}` : `${approval.title}已处理` },
+    },
+    body: { elements: [approvalPanel(approval, options)] },
+  };
+}
+
 function* groupBlocks(blocks: Block[]): Generator<Group> {
   let toolBuf: ToolEntry[] = [];
   for (const b of blocks) {

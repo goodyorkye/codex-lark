@@ -241,7 +241,10 @@ export class CodexAppServerClient extends EventEmitter {
   }
 
   async startTurn(options: StartTurnOptions): Promise<{ id: string; status?: string }> {
-    const input: Array<Record<string, unknown>> = [{ type: 'text', text: options.text }];
+    const input: Array<Record<string, unknown>> = [];
+    if (options.text.trim() || (!(options.images?.length) && !(options.audios?.length))) {
+      input.push({ type: 'text', text: options.text });
+    }
     for (const path of options.images ?? []) input.push({ type: 'localImage', path });
     for (const path of options.audios ?? []) input.push({ type: 'localAudio', path });
     const result = await this.request<{ turn: { id: string; status?: string } }>('turn/start', {
@@ -408,6 +411,7 @@ function disabledDesktopFollower(): DesktopIpcActionFollower {
 function isApprovalMethod(method: string): method is ApprovalRequest['method'] {
   return method === 'item/commandExecution/requestApproval'
     || method === 'item/fileChange/requestApproval'
+    || method === 'item/fileRead/requestApproval'
     || method === 'item/permissions/requestApproval';
 }
 
@@ -427,9 +431,18 @@ function toApprovalRequest(
       : [params.command, params.cwd, params.reason].filter(Boolean).map(String).join('\n');
     return { requestId, method, threadId, turnId, itemId, title, detail, params };
   }
-  if (method === 'item/fileChange/requestApproval') {
+  if (method === 'item/fileChange/requestApproval' || method === 'item/fileRead/requestApproval') {
     const detail = [params.reason, params.grantRoot].filter(Boolean).map(String).join('\n');
-    return { requestId, method, threadId, turnId, itemId, title: '文件修改审批', detail, params };
+    return {
+      requestId,
+      method,
+      threadId,
+      turnId,
+      itemId,
+      title: method === 'item/fileRead/requestApproval' ? '文件读取审批' : '文件修改审批',
+      detail,
+      params,
+    };
   }
   const detail = [params.reason, params.cwd, JSON.stringify(params.permissions ?? {})]
     .filter(Boolean)
