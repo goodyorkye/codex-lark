@@ -40,6 +40,7 @@ describe('Codex navigation cards', () => {
     const rendered = JSON.stringify(projectsCard(projects));
     expect(rendered).toContain('另有 5 项未显示');
     expect(rendered).not.toContain('/tmp/p-24');
+    expect(collectTags(projectsCard(projects))).not.toContain('note');
   });
 
   it('renders a cross-project recent task switcher', () => {

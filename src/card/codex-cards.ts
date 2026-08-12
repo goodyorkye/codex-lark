@@ -237,7 +237,7 @@ function appendOverflow(elements: object[], total: number, visible: number): obj
   if (total <= visible) return elements;
   return [
     ...elements,
-    { tag: 'note', elements: [{ tag: 'plain_text', content: `另有 ${total - visible} 项未显示，请缩小项目范围后再查看。` }] },
+    { tag: 'markdown', content: `另有 ${total - visible} 项未显示，请缩小项目范围后再查看。`, text_size: 'notation' },
   ];
 }
 
