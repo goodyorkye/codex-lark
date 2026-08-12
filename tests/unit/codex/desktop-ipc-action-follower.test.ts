@@ -3,6 +3,50 @@ import { describe, expect, it, vi } from 'vitest';
 import remodexActionFollower from '../../../src/vendor/remodex-ipc/desktop-ipc-action-follower.cjs';
 
 describe('Desktop IPC action follower transport', () => {
+  it('preserves the numeric Desktop request id when replying to an approval', () => {
+    expect(remodexActionFollower.desktopFollowerPayloadForResponse({
+      requestId: '900',
+      desktopRequestId: 900,
+      method: 'item/commandExecution/requestApproval',
+      threadId: 'thread-desktop',
+    }, {
+      id: 900,
+      result: { decision: 'accept' },
+    })).toEqual({
+      method: 'thread-follower-command-approval-decision',
+      params: {
+        conversationId: 'thread-desktop',
+        requestId: 900,
+        decision: 'accept',
+      },
+    });
+  });
+
+  it('routes permission approvals through the dedicated Desktop IPC response', () => {
+    expect(remodexActionFollower.desktopFollowerPayloadForResponse({
+      requestId: '901',
+      desktopRequestId: 901,
+      method: 'item/permissions/requestApproval',
+      threadId: 'thread-desktop',
+    }, {
+      id: 901,
+      result: {
+        permissions: { network: { enabled: true } },
+        scope: 'turn',
+      },
+    })).toEqual({
+      method: 'thread-follower-permissions-request-approval-response',
+      params: {
+        conversationId: 'thread-desktop',
+        requestId: 901,
+        response: {
+          permissions: { network: { enabled: true } },
+          scope: 'turn',
+        },
+      },
+    });
+  });
+
   it('does not queue a follower request on a stale connecting socket', async () => {
     const socket = new FakeSocket();
     const netModule = {
