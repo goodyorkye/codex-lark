@@ -471,6 +471,9 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
     cwdRealpath: workspace.cwdRealpath,
     policyFingerprint: policy.policyFingerprint,
     threadId: thread.id,
+    ...(thread.name ?? thread.preview
+      ? { lastSummary: thread.name ?? thread.preview }
+      : {}),
   });
   await ctx.channel.send(
     ctx.msg.chatId,

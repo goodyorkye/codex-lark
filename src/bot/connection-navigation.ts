@@ -34,15 +34,28 @@ export async function sendConnectionNavigation(
     .filter((entry) => entry.agentId === 'codex' && entry.status === 'active')
     .sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
+  let taskTitle = latest?.lastSummary;
+  if (latest?.threadId && options.agent.readThread) {
+    try {
+      const thread = await options.agent.readThread(latest.threadId);
+      taskTitle = thread.name?.trim() || thread.preview?.trim() || taskTitle;
+    } catch (error) {
+      log.warn('navigation', 'connection-task-title-unavailable', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   await options.channel.send(ownerOpenId, {
     card: codexRemoteNavigationCard({
       ...(latest?.cwdRealpath ? { cwd: latest.cwdRealpath } : {}),
-      ...(latest?.lastSummary ? { taskTitle: latest.lastSummary } : {}),
+      ...(taskTitle ? { taskTitle } : {}),
     }),
   });
   log.info('navigation', 'connection-pushed', {
     target: ownerOpenId,
     hasCurrentTask: Boolean(latest?.threadId),
+    hasTaskTitle: Boolean(taskTitle),
   });
   return true;
 }

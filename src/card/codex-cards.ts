@@ -13,7 +13,7 @@ export interface CodexRemoteNavigationInfo {
 }
 
 export function codexRemoteNavigationCard(info: CodexRemoteNavigationInfo = {}): object {
-  return card('任务导航', codexRemoteNavigationElements(info));
+  return card('常用操作', codexRemoteNavigationElements(info));
 }
 
 export function codexRemoteNavigationElements(

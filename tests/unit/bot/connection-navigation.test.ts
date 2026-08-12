@@ -21,6 +21,11 @@ describe('connection navigation push', () => {
 
   it('shows the latest active Codex project and skips non-Codex bridges', async () => {
     const send = vi.fn(async (_to: string, _input: unknown) => ({ messageId: 'om-nav' }));
+    const readThread = vi.fn(async () => ({
+      id: 'thread-current',
+      cwd: '/tmp/current-project',
+      name: '当前任务',
+    }));
     const entries = () => [{
       key: 'latest',
       scopeId: 'oc_chat',
@@ -30,16 +35,16 @@ describe('connection navigation push', () => {
       status: 'active' as const,
       updatedAt: 2,
       threadId: 'thread-current',
-      lastSummary: '当前任务',
     }];
 
     await sendConnectionNavigation({
       channel: { send } as never,
-      agent: { id: 'codex' } as AgentAdapter,
+      agent: { id: 'codex', readThread } as never,
       sessionCatalog: { entries },
       controls: { botOwnerId: 'ou_owner' },
     });
     expect(JSON.stringify(send.mock.calls[0]?.[1])).toContain('current\\\\-project / 当前任务');
+    expect(readThread).toHaveBeenCalledWith('thread-current');
 
     send.mockClear();
     await expect(sendConnectionNavigation({

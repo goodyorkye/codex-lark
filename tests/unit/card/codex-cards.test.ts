@@ -70,6 +70,8 @@ describe('Codex navigation cards', () => {
       taskTitle: '修复登录',
     });
     const navigation = JSON.stringify(card);
+    expect(navigation).toContain('常用操作');
+    expect(navigation).not.toContain('任务导航');
     expect(navigation).toContain('project\\\\-a / 修复登录');
     expect(navigation).toContain('tasks.recent');
     expect(navigation).toContain('projects');
