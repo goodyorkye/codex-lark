@@ -51,7 +51,7 @@ export function codexRemoteHelpCard(): object {
         '**精确操作（通常直接点卡片即可）**',
         '- `/project use <路径>`',
         '- `/task use <任务ID>` · `/task show <任务ID>`',
-        '- `/model use <模型>`',
+        '- `/model select <模型>` · `/model effort <模型> <推理强度>`',
         '',
         '需要授权时直接点击审批卡片。',
       ].join('\n'),
@@ -64,6 +64,7 @@ export interface CodexRemoteStatusInfo {
   cwd?: string;
   threadId?: string;
   model?: string;
+  reasoningEffort?: string;
   activeRun: boolean;
 }
 
@@ -72,7 +73,9 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
     ? `**${escapeMd(basename(info.cwd) || info.cwd)}**\n${escapeMd(info.cwd)}`
     : '尚未选择，请点“项目”';
   const task = info.threadId ? `\`${escapeMd(shortId(info.threadId))}\`` : '下一条消息会新建';
-  const model = info.model ? `\`${escapeMd(info.model)}\`` : 'Codex 默认模型';
+  const model = info.model
+    ? `\`${escapeMd(info.model)}\`${info.reasoningEffort ? ` · ${escapeMd(effortLabel(info.reasoningEffort))}` : ''}`
+    : 'Codex 默认模型';
   return card('Codex 遥控状态', [
     {
       tag: 'markdown',
@@ -250,15 +253,48 @@ export function modelsCard(models: CodexModel[], selected?: string): object {
         weight: 1,
         elements: [{
           tag: 'markdown',
-          content: `${model.model === selected ? '📍 ' : ''}**${escapeMd(model.displayName)}**\n${escapeMd(model.model)}${model.isDefault ? ' · 默认' : ''}`,
+          content: `${model.model === selected ? '📍 ' : ''}**${escapeMd(model.displayName)}**\n${escapeMd(model.model)}${model.isDefault ? ' · 默认模型' : ''}${model.supportedReasoningEfforts?.length ? ` · ${model.supportedReasoningEfforts.length} 档推理强度` : ''}`,
         }],
       }, {
         tag: 'column',
         width: 'auto',
-        elements: [button('使用', 'model.use', model.model)],
+        elements: [button('选择', 'model.select', model.model)],
       }],
     })), models.length, visible.length),
   );
+}
+
+export function reasoningEffortsCard(
+  model: CodexModel,
+  selectedEffort?: string,
+): object {
+  const efforts = model.supportedReasoningEfforts ?? [];
+  return card('选择推理强度', [
+    {
+      tag: 'markdown',
+      content: `**${escapeMd(model.displayName)}**\n${escapeMd(model.model)}`,
+    },
+    ...(efforts.length
+      ? efforts.map((entry) => ({
+          tag: 'column_set',
+          flex_mode: 'none',
+          columns: [{
+            tag: 'column',
+            width: 'weighted',
+            weight: 1,
+            elements: [{
+              tag: 'markdown',
+              content: `${entry.reasoningEffort === selectedEffort ? '📍 ' : ''}**${escapeMd(effortLabel(entry.reasoningEffort))}**${entry.reasoningEffort === model.defaultReasoningEffort ? ' · 默认' : ''}${entry.description ? `\n${escapeMd(entry.description)}` : ''}`,
+            }],
+          }, {
+            tag: 'column',
+            width: 'auto',
+            elements: [button('选择', 'model.effort', `${model.model} ${entry.reasoningEffort}`)],
+          }],
+        }))
+      : [{ tag: 'markdown', content: '该模型没有可选的推理强度。' }]),
+    buttonRow([actionButton('返回模型', 'models')]),
+  ]);
 }
 
 function appendOverflow(elements: object[], total: number, visible: number): object[] {
@@ -346,6 +382,17 @@ function taskListMetadata(thread: CodexThread): string {
   return thread.model
     ? `${updated} · 模型：${escapeMd(thread.model)}`
     : updated;
+}
+
+function effortLabel(effort: string): string {
+  const labels: Record<string, string> = {
+    minimal: '极简',
+    low: '低',
+    medium: '中',
+    high: '高',
+    xhigh: '超高',
+  };
+  return labels[effort] ?? effort;
 }
 
 function truncate(text: string, max: number): string {

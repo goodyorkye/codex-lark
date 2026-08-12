@@ -143,7 +143,8 @@ export async function startRunFlow(input: StartRunFlowInput): Promise<StartRunFl
       policy,
       sessionId,
       threadId,
-      model: input.sessions.getModel(input.scopeId),
+      model: input.sessions.getModelForThread(input.scopeId, threadId),
+      reasoningEffort: input.sessions.getReasoningEffortForThread(input.scopeId, threadId),
       images:
         input.capability.agentId === 'codex'
           ? policy.attachments
@@ -197,6 +198,7 @@ export function recordRunSessionEvent(input: RecordRunSessionEventInput): void {
     return;
   }
   if (input.capability.agentId === 'codex' && input.event.threadId) {
+    input.sessions.bindModelSelectionToThread(input.scopeId, input.event.threadId);
     input.sessionCatalog?.upsertActive({
       scopeId: input.scopeId,
       agentId: 'codex',

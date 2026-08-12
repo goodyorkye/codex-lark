@@ -64,12 +64,24 @@ describe('Codex phone navigation commands', () => {
     expect(card).toContain('项目 B 的任务');
     expect(card).not.toContain('项目 A 的任务');
   });
+
+  it('selects a model and reasoning effort for the current task', async () => {
+    const h = await createHarness();
+
+    await expect(h.run('/model select gpt-test')).resolves.toBe(true);
+    expect(JSON.stringify(h.channel.sent.at(-1)?.content)).toContain('选择推理强度');
+
+    await expect(h.run('/model effort gpt-test high')).resolves.toBe(true);
+    expect(h.sessions.getModel('chat-1')).toBe('gpt-test');
+    expect(h.sessions.getReasoningEffort('chat-1')).toBe('high');
+  });
 });
 
 async function createHarness(): Promise<{
   tmp: TmpProfile;
   projectB: string;
   channel: ReturnType<typeof createFakeChannel>;
+  sessions: SessionStore;
   workspaces: WorkspaceStore;
   agent: ReturnType<typeof createFakeAgent> & {
     listThreads: ReturnType<typeof vi.fn>;
@@ -105,6 +117,16 @@ async function createHarness(): Promise<{
   const agent = Object.assign(createFakeAgent(), {
     listThreads: vi.fn(async (options?: { cwd?: string; limit?: number }) =>
       options?.cwd ? threads.filter((thread) => thread.cwd === options.cwd) : threads),
+    listModels: vi.fn(async () => [{
+      id: 'gpt-test',
+      model: 'gpt-test',
+      displayName: 'GPT Test',
+      defaultReasoningEffort: 'medium',
+      supportedReasoningEfforts: [
+        { reasoningEffort: 'medium' },
+        { reasoningEffort: 'high' },
+      ],
+    }]),
   });
   const profileConfig = createDefaultProfileConfig({
     agentKind: 'codex',
@@ -152,7 +174,7 @@ async function createHarness(): Promise<{
     await Promise.all([sessions.flush(), workspaces.flush()]);
     await tmp.cleanup();
   });
-  return { tmp, projectB, channel, workspaces, agent, run };
+  return { tmp, projectB, channel, sessions, workspaces, agent, run };
 }
 
 function message(content: string): NormalizedMessage {

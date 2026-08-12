@@ -43,10 +43,13 @@ Normal use does not require typing commands. Every completed Codex reply include
 | `/task show <id>` | Show the task transcript |
 | `/new` | Start a new task in the current project |
 | `/models` | List models reported by the active Desktop core |
-| `/model use <model>` | Select a model for later messages in this chat |
+| `/model select <model>` | Select a model and open its reasoning-effort choices |
+| `/model effort <model> <effort>` | Set both model and reasoning effort for later messages |
 | `/stop` | Interrupt the active turn |
 | `/status` | Show the current project, task, model, and run state |
 | `/help` | Show the phone remote commands |
+
+A model and reasoning-effort choice overrides the current task and becomes the default for later new tasks. Switching to another existing task preserves that task's previous model settings.
 
 The legacy `/reset`, `/resume`, `/cd`, and `/ws` commands are redundant in Codex phone-remote mode and are replaced by `/new`, `/tasks`, and `/projects`. Internal account, process, reconnect, and group-access maintenance commands are not exposed in the phone remote UI.
 

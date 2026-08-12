@@ -58,6 +58,7 @@ import {
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
   modelsCard,
+  reasoningEffortsCard,
   projectsCard,
   recentTasksCard,
   taskDetailCard,
@@ -486,7 +487,8 @@ async function handleModels(_args: string, ctx: CommandContext): Promise<void> {
     return;
   }
   const models = await ctx.agent.listModels();
-  await sendCodexCard(ctx, modelsCard(models, ctx.sessions.getModel(ctx.scope)));
+  const selected = await currentCodexModelSettings(ctx);
+  await sendCodexCard(ctx, modelsCard(models, selected.model));
 }
 
 async function sendCodexCard(ctx: CommandContext, card: object): Promise<void> {
@@ -498,19 +500,82 @@ async function sendCodexCard(ctx: CommandContext, card: object): Promise<void> {
 }
 
 async function handleModel(args: string, ctx: CommandContext): Promise<void> {
-  const [action, model] = args.trim().split(/\s+/, 2);
-  if (action !== 'use' || !model) {
+  const [action, modelName, reasoningEffort] = args.trim().split(/\s+/, 3);
+  if ((action !== 'select' && action !== 'effort') || !modelName) {
     await handleModels('', ctx);
     return;
   }
   if (!ctx.agent.listModels) return;
   const models = await ctx.agent.listModels();
-  if (!models.some((entry) => entry.model === model)) {
-    await reply(ctx, `模型不可用：${model}`);
+  const model = models.find((entry) => entry.model === modelName);
+  if (!model) {
+    await reply(ctx, `模型不可用：${modelName}`);
     return;
   }
-  ctx.sessions.setModel(ctx.scope, model);
-  await reply(ctx, `✓ 后续消息将使用 **${model}**。`);
+  const currentThreadId = currentCodexThreadId(ctx);
+  if (action === 'select') {
+    const efforts = model.supportedReasoningEfforts ?? [];
+    if (efforts.length === 0) {
+      ctx.sessions.setModelOnlySelection(ctx.scope, model.model, currentThreadId);
+      await reply(ctx, `✓ 后续消息将使用 **${model.model}**。`);
+      return;
+    }
+    const selected = await currentCodexModelSettings(ctx);
+    await sendCodexCard(ctx, reasoningEffortsCard(
+      model,
+      selected.model === model.model
+        ? selected.reasoningEffort
+        : model.defaultReasoningEffort,
+    ));
+    return;
+  }
+  if (!reasoningEffort || !model.supportedReasoningEfforts?.some(
+    (entry) => entry.reasoningEffort === reasoningEffort,
+  )) {
+    await reply(ctx, `推理强度不可用：${reasoningEffort || '未指定'}`);
+    return;
+  }
+  ctx.sessions.setModelSelection(ctx.scope, model.model, reasoningEffort, currentThreadId);
+  await reply(ctx, `✓ 后续消息将使用 **${model.displayName}**，推理强度为 **${effortLabelForReply(reasoningEffort)}**。`);
+}
+
+async function currentCodexModelSettings(
+  ctx: CommandContext,
+): Promise<{ model?: string; reasoningEffort?: string }> {
+  const threadId = currentCodexThreadId(ctx);
+  const explicitModel = ctx.sessions.getModelForThread(ctx.scope, threadId);
+  if (explicitModel) {
+    return {
+      model: explicitModel,
+      reasoningEffort: ctx.sessions.getReasoningEffortForThread(ctx.scope, threadId),
+    };
+  }
+  if (threadId && ctx.agent.readThread) {
+    try {
+      const thread = await ctx.agent.readThread(threadId);
+      return {
+        ...(thread.model ? { model: thread.model } : {}),
+        ...(thread.reasoningEffort ? { reasoningEffort: thread.reasoningEffort } : {}),
+      };
+    } catch (error) {
+      log.warn('model', 'current-thread-settings-unavailable', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  if (!threadId) {
+    return {
+      ...(ctx.sessions.getModel(ctx.scope) ? { model: ctx.sessions.getModel(ctx.scope) } : {}),
+      ...(ctx.sessions.getReasoningEffort(ctx.scope)
+        ? { reasoningEffort: ctx.sessions.getReasoningEffort(ctx.scope) }
+        : {}),
+    };
+  }
+  return {};
+}
+
+function effortLabelForReply(effort: string): string {
+  return ({ minimal: '极简', low: '低', medium: '中', high: '高', xhigh: '超高' } as Record<string, string>)[effort] ?? effort;
 }
 
 async function handleApproval(args: string, ctx: CommandContext): Promise<void> {
@@ -1021,10 +1086,12 @@ async function handleStatus(_args: string, ctx: CommandContext): Promise<void> {
       ? ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity)
       : undefined;
   if (isCodex) {
+    const modelSettings = await currentCodexModelSettings(ctx);
     const card = codexRemoteStatusCard({
       cwd,
       threadId: catalogEntry?.threadId,
-      model: ctx.sessions.getModel(ctx.scope),
+      model: modelSettings.model,
+      reasoningEffort: modelSettings.reasoningEffort,
       activeRun: Boolean(ctx.activeRuns.get(ctx.scope)),
     });
     await ctx.channel.send(ctx.msg.chatId, { card }, { replyTo: ctx.msg.messageId });

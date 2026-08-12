@@ -16,6 +16,10 @@ export interface SessionEntry {
   idleTimeoutMinutes?: number;
   /** Optional per-scope model selected from Codex App Server's model catalog. */
   model?: string;
+  /** Optional reasoning effort selected for the active Codex model. */
+  reasoningEffort?: string;
+  /** Thread receiving the explicit override. Absent means defaults for the next new task. */
+  modelThreadId?: string;
 }
 
 type SessionMap = Record<string, SessionEntry>;
@@ -46,14 +50,22 @@ export class SessionStore {
         const idleTimeoutMinutes =
           typeof entry.idleTimeoutMinutes === 'number' ? entry.idleTimeoutMinutes : undefined;
         const model = typeof entry.model === 'string' && entry.model.trim() ? entry.model : undefined;
+        const reasoningEffort = typeof entry.reasoningEffort === 'string' && entry.reasoningEffort.trim()
+          ? entry.reasoningEffort
+          : undefined;
+        const modelThreadId = typeof entry.modelThreadId === 'string' && entry.modelThreadId.trim()
+          ? entry.modelThreadId
+          : undefined;
         const hasSession = sessionId !== undefined && cwd !== undefined;
-        if (!hasSession && idleTimeoutMinutes === undefined && model === undefined) continue;
+        if (!hasSession && idleTimeoutMinutes === undefined && model === undefined && reasoningEffort === undefined) continue;
         this.data[chatId] = {
           ...(sessionId !== undefined ? { sessionId } : {}),
           ...(cwd !== undefined ? { cwd } : {}),
           updatedAt: entry.updatedAt,
           ...(idleTimeoutMinutes !== undefined ? { idleTimeoutMinutes } : {}),
           ...(model !== undefined ? { model } : {}),
+          ...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
+          ...(modelThreadId !== undefined ? { modelThreadId } : {}),
         };
       }
     } catch (err) {
@@ -90,6 +102,8 @@ export class SessionStore {
         ? { idleTimeoutMinutes: prev.idleTimeoutMinutes }
         : {}),
       ...(prev?.model ? { model: prev.model } : {}),
+      ...(prev?.reasoningEffort ? { reasoningEffort: prev.reasoningEffort } : {}),
+      ...(prev?.modelThreadId ? { modelThreadId: prev.modelThreadId } : {}),
     };
     this.schedulePersist();
   }
@@ -97,13 +111,14 @@ export class SessionStore {
   clear(chatId: string): void {
     const prev = this.data[chatId];
     if (!prev) return;
-    if (prev.idleTimeoutMinutes !== undefined || prev.model !== undefined) {
+    if (prev.idleTimeoutMinutes !== undefined || prev.model !== undefined || prev.reasoningEffort !== undefined) {
       this.data[chatId] = {
         updatedAt: Date.now(),
         ...(prev.idleTimeoutMinutes !== undefined
           ? { idleTimeoutMinutes: prev.idleTimeoutMinutes }
           : {}),
         ...(prev.model ? { model: prev.model } : {}),
+        ...(prev.reasoningEffort ? { reasoningEffort: prev.reasoningEffort } : {}),
       };
     } else {
       delete this.data[chatId];
@@ -152,7 +167,67 @@ export class SessionStore {
     };
     if (trimmed) next.model = trimmed;
     else delete next.model;
+    if (next.model !== prev?.model) {
+      delete next.reasoningEffort;
+      delete next.modelThreadId;
+    }
     this.data[chatId] = next;
+    this.schedulePersist();
+  }
+
+  getReasoningEffort(chatId: string): string | undefined {
+    return this.data[chatId]?.reasoningEffort;
+  }
+
+  getModelForThread(chatId: string, threadId?: string): string | undefined {
+    const entry = this.data[chatId];
+    if (!entry?.model) return undefined;
+    if (!threadId) return entry.model;
+    return entry.modelThreadId === threadId ? entry.model : undefined;
+  }
+
+  getReasoningEffortForThread(chatId: string, threadId?: string): string | undefined {
+    const entry = this.data[chatId];
+    if (!entry?.reasoningEffort) return undefined;
+    if (!threadId) return entry.reasoningEffort;
+    return entry.modelThreadId === threadId ? entry.reasoningEffort : undefined;
+  }
+
+  setModelSelection(
+    chatId: string,
+    model: string,
+    reasoningEffort: string,
+    threadId?: string,
+  ): void {
+    const prev = this.data[chatId];
+    this.data[chatId] = {
+      ...(prev ?? {}),
+      model: model.trim(),
+      reasoningEffort: reasoningEffort.trim(),
+      ...(threadId ? { modelThreadId: threadId } : {}),
+      updatedAt: Date.now(),
+    };
+    if (!threadId) delete this.data[chatId]?.modelThreadId;
+    this.schedulePersist();
+  }
+
+  setModelOnlySelection(chatId: string, model: string, threadId?: string): void {
+    const prev = this.data[chatId];
+    this.data[chatId] = {
+      ...(prev ?? {}),
+      model: model.trim(),
+      ...(threadId ? { modelThreadId: threadId } : {}),
+      updatedAt: Date.now(),
+    };
+    delete this.data[chatId]?.reasoningEffort;
+    if (!threadId) delete this.data[chatId]?.modelThreadId;
+    this.schedulePersist();
+  }
+
+  bindModelSelectionToThread(chatId: string, threadId: string): void {
+    const entry = this.data[chatId];
+    if (!entry?.model || entry.modelThreadId) return;
+    this.data[chatId] = { ...entry, modelThreadId: threadId, updatedAt: Date.now() };
     this.schedulePersist();
   }
 

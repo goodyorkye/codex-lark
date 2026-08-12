@@ -71,6 +71,8 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       runId: 'run-1',
       prompt: `<bridge_context>\n{"chatId":"oc_test","chatType":"p2p","senderId":"ou_test","source":"im"}\n</bridge_context>\n\n<bridge_instructions>\n["internal"]\n</bridge_instructions>\n\n<user_input>\n{"text":"hello"}\n</user_input>`,
       cwd: '/tmp/project',
+      model: 'gpt-test',
+      reasoningEffort: 'high',
     });
     const events: AgentEvent[] = [];
     for await (const event of run.events) events.push(event);
@@ -83,12 +85,18 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     ]));
     const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     expect(requests.find((message) => message.method === 'thread/start')?.params).not.toHaveProperty('developerInstructions');
+    expect(requests.find((message) => message.method === 'thread/start')?.params).toMatchObject({
+      model: 'gpt-test',
+      reasoningEffort: 'high',
+    });
     expect(requests.find((message) => message.method === 'thread/name/set')?.params).toEqual({
       threadId: 'thread-1',
       name: 'hello',
     });
     expect(requests.find((message) => message.method === 'turn/start')?.params).toMatchObject({
       input: [{ type: 'text', text: 'hello' }],
+      model: 'gpt-test',
+      reasoningEffort: 'high',
     });
     expect(requests.find((message) => message.method === 'turn/start')?.params).not.toHaveProperty('additionalContext');
     await adapter.shutdown();

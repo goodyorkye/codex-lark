@@ -95,6 +95,51 @@ describe('agent-aware run-flow resume', () => {
     });
   });
 
+  it('uses an override only for its current task and for future new tasks', async () => {
+    const h = await createHarness('codex');
+    h.sessions.setModelSelection('chat-1', 'gpt-test', 'high', 'thread-current');
+    const probe = await start(h);
+    expect(probe.ok).toBe(true);
+    if (!probe.ok) throw new Error('expected probe run');
+    await collect(probe.execution.subscribe());
+
+    h.catalog.upsertActive({
+      scopeId: 'chat-1',
+      agentId: 'codex',
+      cwdRealpath: probe.cwdRealpath,
+      policyFingerprint: probe.policy.policyFingerprint,
+      threadId: 'thread-current',
+    });
+    const current = await start(h);
+    expect(current.ok).toBe(true);
+    expect(h.agent.runOptions[1]).toMatchObject({
+      threadId: 'thread-current',
+      model: 'gpt-test',
+      reasoningEffort: 'high',
+    });
+    if (current.ok) await collect(current.execution.subscribe());
+
+    h.catalog.upsertActive({
+      scopeId: 'chat-1',
+      agentId: 'codex',
+      cwdRealpath: probe.cwdRealpath,
+      policyFingerprint: probe.policy.policyFingerprint,
+      threadId: 'thread-other',
+    });
+    const other = await start(h);
+    expect(other.ok).toBe(true);
+    expect(h.agent.runOptions[2]).toMatchObject({
+      threadId: 'thread-other',
+      model: undefined,
+      reasoningEffort: undefined,
+    });
+
+    h.sessions.clear('chat-1');
+    expect(h.sessions.getModelForThread('chat-1')).toBe('gpt-test');
+    expect(h.sessions.getReasoningEffortForThread('chat-1')).toBe('high');
+    expect(h.sessions.getModelForThread('chat-1', 'thread-current')).toBeUndefined();
+  });
+
   it('does not resume when the policy fingerprint changes', async () => {
     const h = await createHarness('claude');
     const first = await start(h);

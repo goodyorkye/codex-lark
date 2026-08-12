@@ -37,6 +37,7 @@ export interface ThreadListOptions {
 export interface StartThreadOptions {
   cwd: string;
   model?: string;
+  reasoningEffort?: string;
   approvalPolicy?: string;
   sandbox?: string;
 }
@@ -47,6 +48,7 @@ export interface StartTurnOptions {
   images?: readonly string[];
   cwd?: string;
   model?: string;
+  reasoningEffort?: string;
   approvalPolicy?: string;
   sandboxPolicy?: Record<string, unknown>;
 }
@@ -183,6 +185,7 @@ export class CodexAppServerClient extends EventEmitter {
     const result = await this.request<{ thread: CodexThread }>('thread/start', {
       cwd: options.cwd,
       ...(options.model ? { model: options.model } : {}),
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
       ...(options.sandbox ? { sandbox: options.sandbox } : {}),
     });
@@ -194,6 +197,7 @@ export class CodexAppServerClient extends EventEmitter {
       threadId,
       ...(options.cwd ? { cwd: options.cwd } : {}),
       ...(options.model ? { model: options.model } : {}),
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
       ...(options.sandbox ? { sandbox: options.sandbox } : {}),
     });
@@ -209,6 +213,7 @@ export class CodexAppServerClient extends EventEmitter {
       codexLarkDesktopHandoff: true,
       ...(options.cwd ? { cwd: options.cwd } : {}),
       ...(options.model ? { model: options.model } : {}),
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
       ...(options.sandbox ? { sandbox: options.sandbox } : {}),
     });
@@ -242,6 +247,7 @@ export class CodexAppServerClient extends EventEmitter {
       input,
       ...(options.cwd ? { cwd: options.cwd } : {}),
       ...(options.model ? { model: options.model } : {}),
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
       ...(options.sandboxPolicy ? { sandboxPolicy: options.sandboxPolicy } : {}),
     });

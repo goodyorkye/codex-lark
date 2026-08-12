@@ -97,12 +97,14 @@ export class CodexAppServerAdapter implements AgentAdapter {
           ? await resumeThreadWithDesktopHandoff(client, options.threadId, {
               cwd: options.cwd,
               model: options.model,
+              reasoningEffort: options.reasoningEffort,
               approvalPolicy: approvalPolicyFor(options),
               sandbox: options.sandbox,
             })
           : await client.startThread({
               cwd: requiredCwd(options),
               model: options.model,
+              reasoningEffort: options.reasoningEffort,
               approvalPolicy: approvalPolicyFor(options),
               sandbox: options.sandbox,
             });
@@ -117,6 +119,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           threadId: thread.id,
           cwd: thread.cwd || options.cwd,
           model: options.model,
+          reasoningEffort: options.reasoningEffort,
         });
 
         const streamedAgentItems = new Set<string>();
@@ -174,6 +177,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           images: options.images,
           cwd: options.cwd,
           model: options.model,
+          reasoningEffort: options.reasoningEffort,
           approvalPolicy: approvalPolicyFor(options),
         });
         active = { threadId: thread.id, turnId: turn.id };

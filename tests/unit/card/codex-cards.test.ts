@@ -5,6 +5,7 @@ import {
   codexRemoteStatusCard,
   modelsCard,
   projectsCard,
+  reasoningEffortsCard,
   recentTasksCard,
   taskDetailCard,
   tasksCard,
@@ -34,7 +35,7 @@ describe('Codex navigation cards', () => {
 
   it('renders model selection and readable conversation detail', () => {
     expect(JSON.stringify(modelsCard([{ id: 'm', model: 'gpt-test', displayName: 'GPT Test' }], 'gpt-test')))
-      .toContain('model.use');
+      .toContain('model.select');
     const detail = taskDetailCard({
       id: 'thread-1',
       cwd: '/tmp/demo',
@@ -47,6 +48,26 @@ describe('Codex navigation cards', () => {
       }],
     });
     expect(JSON.stringify(detail)).toContain('你好，我来处理');
+  });
+
+  it('renders reasoning-effort choices for the selected model', () => {
+    const rendered = JSON.stringify(reasoningEffortsCard({
+      id: 'm',
+      model: 'gpt-test',
+      displayName: 'GPT Test',
+      defaultReasoningEffort: 'medium',
+      supportedReasoningEfforts: [
+        { reasoningEffort: 'low', description: 'Fast' },
+        { reasoningEffort: 'medium', description: 'Balanced' },
+        { reasoningEffort: 'high', description: 'Deep' },
+      ],
+    }, 'high'));
+    expect(rendered).toContain('选择推理强度');
+    expect(rendered).toContain('model.effort');
+    expect(rendered).toContain('低');
+    expect(rendered).toContain('中');
+    expect(rendered).toContain('高');
+    expect(rendered).toContain('默认');
   });
 
   it('paginates large project lists to stay inside Feishu card limits', () => {
@@ -141,11 +162,13 @@ describe('Codex navigation cards', () => {
       cwd: '/tmp/demo',
       threadId: 'thread-1234567890',
       model: 'gpt-test',
+      reasoningEffort: 'high',
       activeRun: true,
     }));
     expect(status).toContain('Codex 遥控状态');
     expect(status).toContain('/tmp/demo');
     expect(status).toContain('gpt\\\\-test');
+    expect(status).toContain('高');
     expect(status).not.toContain('owner API');
     expect(status).not.toContain('lark-cli');
   });
