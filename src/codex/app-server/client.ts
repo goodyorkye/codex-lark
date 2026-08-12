@@ -47,6 +47,7 @@ export interface StartTurnOptions {
   text: string;
   images?: readonly string[];
   audios?: readonly string[];
+  files?: readonly { path: string; name?: string }[];
   cwd?: string;
   model?: string;
   reasoningEffort?: string;
@@ -242,11 +243,15 @@ export class CodexAppServerClient extends EventEmitter {
 
   async startTurn(options: StartTurnOptions): Promise<{ id: string; status?: string }> {
     const input: Array<Record<string, unknown>> = [];
-    if (options.text.trim() || (!(options.images?.length) && !(options.audios?.length))) {
+    if (options.text.trim()) {
       input.push({ type: 'text', text: options.text });
+    }
+    for (const file of options.files ?? []) {
+      input.push({ type: 'text', text: localFileReference(file) });
     }
     for (const path of options.images ?? []) input.push({ type: 'localImage', path });
     for (const path of options.audios ?? []) input.push({ type: 'localAudio', path });
+    if (input.length === 0) input.push({ type: 'text', text: options.text });
     const result = await this.request<{ turn: { id: string; status?: string } }>('turn/start', {
       threadId: options.threadId,
       input,
@@ -385,6 +390,16 @@ export class CodexAppServerClient extends EventEmitter {
     this.approvals.clear();
     this.emit('close', error);
   }
+}
+
+function localFileReference(file: { path: string; name?: string }): string {
+  const fallbackName = file.path.split(/[\\/]/).pop() || '文件';
+  const label = escapeMarkdownLabel(file.name?.trim() || fallbackName);
+  return `[附件：${label}](<${file.path}>)`;
+}
+
+function escapeMarkdownLabel(value: string): string {
+  return value.replace(/([\\\[\]])/g, '\\$1').replace(/[\r\n]+/g, ' ');
 }
 
 interface DesktopIpcLiveOwner {

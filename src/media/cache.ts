@@ -146,7 +146,10 @@ function effectiveMime(
     if (mime.startsWith('audio/') || mime === 'application/ogg') return mime;
     return audioMimeForName(originalName) ?? defaultMime(kind);
   }
-  return !mime || mime === 'application/octet-stream' ? defaultMime(kind) : mime;
+  if (!mime || mime === 'application/octet-stream') {
+    return kind === 'file' ? fileMimeForName(originalName) ?? defaultMime(kind) : defaultMime(kind);
+  }
+  return mime;
 }
 
 function audioMimeForName(originalName: string | undefined): string | undefined {
@@ -159,6 +162,25 @@ function audioMimeForName(originalName: string | undefined): string | undefined 
     '.ogg': 'audio/ogg',
     '.opus': 'audio/opus',
     '.wav': 'audio/wav',
+  } as Record<string, string>)[extension];
+}
+
+function fileMimeForName(originalName: string | undefined): string | undefined {
+  const extension = originalName ? extname(originalName).toLowerCase() : '';
+  return ({
+    '.csv': 'text/csv',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.html': 'text/html',
+    '.json': 'application/json',
+    '.md': 'text/markdown',
+    '.pdf': 'application/pdf',
+    '.ppt': 'application/vnd.ms-powerpoint',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.txt': 'text/plain',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.zip': 'application/zip',
   } as Record<string, string>)[extension];
 }
 

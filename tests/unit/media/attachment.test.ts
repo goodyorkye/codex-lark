@@ -102,7 +102,7 @@ describe('attachment policy normalization', () => {
     ]);
 
     expect(attachmentOmissionNotice(attachments, 'codex')).toBe(
-      '⚠️ 1 个文件、1 个视频未能提交给 Codex，其他内容仍会正常发送。',
+      '⚠️ 1 个视频未能提交给 Codex，其他内容仍会正常发送。',
     );
     expect(attachmentOmissionNotice(attachments.slice(0, 2), 'claude')).toBeUndefined();
   });

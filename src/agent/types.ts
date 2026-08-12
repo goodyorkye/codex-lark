@@ -36,6 +36,11 @@ export type AgentEvent =
 
 export const CLAUDE_DEFAULT_PERMISSION_MODE: ClaudePermissionMode = 'bypassPermissions';
 
+export interface AgentLocalFile {
+  path: string;
+  name?: string;
+}
+
 export interface AgentRunOptions {
   runId: string;
   prompt: string;
@@ -46,6 +51,7 @@ export interface AgentRunOptions {
   reasoningEffort?: string;
   images?: readonly string[];
   audios?: readonly string[];
+  files?: readonly AgentLocalFile[];
   sandbox?: CodexSandboxMode;
   permissionMode?: ClaudePermissionMode;
   /**

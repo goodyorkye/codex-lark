@@ -58,6 +58,14 @@ const MIME_EXT: Record<string, string> = {
   'application/ogg': 'ogg',
   'application/pdf': 'pdf',
   'application/zip': 'zip',
+  'application/msword': 'doc',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'text/csv': 'csv',
+  'text/html': 'html',
   'text/plain': 'txt',
   'text/markdown': 'md',
   'application/json': 'json',
@@ -137,7 +145,10 @@ export function attachmentOmissionNotice(
 ): string | undefined {
   const omitted = attachments.filter((attachment) =>
     attachment.decision !== 'accepted'
-      || (agentId === 'codex' && attachment.kind !== 'image' && attachment.kind !== 'audio'));
+      || (agentId === 'codex'
+        && attachment.kind !== 'image'
+        && attachment.kind !== 'audio'
+        && attachment.kind !== 'file'));
   if (omitted.length === 0) return undefined;
   const labels: Record<AttachmentKind, string> = {
     image: '图片',

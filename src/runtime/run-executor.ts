@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentAdapter, AgentEvent, AgentRun } from '../agent/types';
+import type { AgentAdapter, AgentEvent, AgentLocalFile, AgentRun } from '../agent/types';
 import { ActiveRuns, type RunHandle } from '../bot/active-runs';
 import { ProcessPool } from '../bot/process-pool';
 import type { RunPolicyAllow } from '../policy/run-policy';
@@ -24,6 +24,7 @@ export interface SubmitRunInput {
   reasoningEffort?: string;
   images?: readonly string[];
   audios?: readonly string[];
+  files?: readonly AgentLocalFile[];
   stopGraceMs?: number;
   nowait?: boolean;
   observability?: {
@@ -105,6 +106,7 @@ export class RunExecutor {
       reasoningEffort: input.reasoningEffort,
       images: input.images,
       audios: input.audios,
+      files: input.files,
       sandbox: input.policy.sandbox,
       permissionMode: input.policy.permissionMode,
       stopGraceMs: input.stopGraceMs,

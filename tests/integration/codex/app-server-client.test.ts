@@ -78,6 +78,32 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     await client.stop();
   });
 
+  it('sends ordinary files as visible local-path references in the same turn', async () => {
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-file-log-')), 'requests.jsonl');
+    const client = new CodexAppServerClient({
+      binaryPath: await fakeAppServer(requestLog),
+      env: { ...process.env, CODEX_LARK_DESKTOP_IPC: '0' },
+      requestTimeoutMs: 3_000,
+    });
+    await client.start();
+    await client.startTurn({
+      threadId: 'thread-1',
+      text: '总结这些文件',
+      files: [
+        { path: '/tmp/report.pdf', name: '季度报告.pdf' },
+        { path: '/tmp/notes.txt', name: 'notes [final].txt' },
+      ],
+    });
+
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.find((message) => message.method === 'turn/start')?.params.input).toEqual([
+      { type: 'text', text: '总结这些文件' },
+      { type: 'text', text: '[附件：季度报告.pdf](</tmp/report.pdf>)' },
+      { type: 'text', text: '[附件：notes \\[final\\].txt](</tmp/notes.txt>)' },
+    ]);
+    await client.stop();
+  });
+
   it('streams a new task and does not lose notifications sent beside turn/start', async () => {
     const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-request-log-')), 'requests.jsonl');
     const binary = await fakeAppServer(requestLog);
@@ -97,6 +123,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       reasoningEffort: 'high',
       images: ['/tmp/example.png'],
       audios: ['/tmp/example.ogg'],
+      files: [{ path: '/tmp/example.txt', name: 'example.txt' }],
     });
     const events: AgentEvent[] = [];
     for await (const event of run.events) events.push(event);
@@ -120,6 +147,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     expect(requests.find((message) => message.method === 'turn/start')?.params).toMatchObject({
       input: [
         { type: 'text', text: 'hello' },
+        { type: 'text', text: '[附件：example.txt](</tmp/example.txt>)' },
         { type: 'localImage', path: '/tmp/example.png' },
         { type: 'localAudio', path: '/tmp/example.ogg' },
       ],

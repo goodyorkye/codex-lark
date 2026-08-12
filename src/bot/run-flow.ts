@@ -159,6 +159,17 @@ export async function startRunFlow(input: StartRunFlowInput): Promise<StartRunFl
               .map((attachment) => attachment.path)
               .filter((path): path is string => Boolean(path))
           : undefined,
+      files:
+        input.capability.agentId === 'codex'
+          ? policy.attachments
+              .filter((attachment) => attachment.kind === 'file' && attachment.decision === 'accepted')
+              .flatMap((attachment) => attachment.path
+                ? [{
+                    path: attachment.path,
+                    ...(attachment.originalName ? { name: attachment.originalName } : {}),
+                  }]
+                : [])
+          : undefined,
       stopGraceMs: input.stopGraceMs,
       observability: input.observability,
     });

@@ -86,6 +86,31 @@ describe('hash media attachment resolver', () => {
     expect(attachment?.absPath).toMatch(/\.opus$/);
   });
 
+  it('recovers safe PDF and text extensions from names when Feishu returns octet-stream', async () => {
+    const root = await tempDir();
+    const cache = new MediaCache(fakeChannel(Buffer.from('file-bytes'), 'application/octet-stream'), root);
+
+    const attachments = await cache.resolve([
+      {
+        messageId: 'om_pdf',
+        resource: { type: 'file', fileKey: 'pdf_key', fileName: 'report.pdf' } as never,
+      },
+      {
+        messageId: 'om_txt',
+        resource: { type: 'file', fileKey: 'txt_key', fileName: 'notes.txt' } as never,
+      },
+    ]);
+
+    expect(attachments.map((attachment) => attachment.mime)).toEqual([
+      'application/pdf',
+      'text/plain',
+    ]);
+    expect(attachments.map((attachment) => attachment.absPath)).toEqual([
+      expect.stringMatching(/\.pdf$/),
+      expect.stringMatching(/\.txt$/),
+    ]);
+  });
+
   it('garbage-collects old cache files by TTL', async () => {
     const root = await tempDir();
     const oldPath = join(root, 'old.bin');
