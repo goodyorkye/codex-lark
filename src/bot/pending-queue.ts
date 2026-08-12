@@ -62,6 +62,13 @@ export class PendingQueue {
     this.blocked.clear();
   }
 
+  /** Immediately hand the queued batch to the flush handler when the scope is idle. */
+  flushNow(scope: string): boolean {
+    if (this.blocked.has(scope) || !this.map.has(scope)) return false;
+    this.flush(scope);
+    return true;
+  }
+
   /** Pause the debounce timer; pushed messages keep accumulating. */
   block(scope: string): void {
     if (this.blocked.has(scope)) return;
@@ -92,6 +99,7 @@ export class PendingQueue {
   private flush(scope: string): void {
     const entry = this.map.get(scope);
     if (!entry) return;
+    if (entry.timer) clearTimeout(entry.timer);
     this.map.delete(scope);
     try {
       this.onFlush(scope, entry.messages);

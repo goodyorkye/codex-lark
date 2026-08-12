@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import type { NormalizedMessage } from '@larksuite/channel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ActiveRuns } from '../../../src/bot/active-runs.js';
+import { CompositionStore } from '../../../src/bot/composition-store.js';
+import { PendingQueue } from '../../../src/bot/pending-queue.js';
 import { commandSessionCatalogIdentity } from '../../../src/bot/session-catalog-identity.js';
 import type { CodexThread } from '../../../src/codex/app-server/protocol.js';
 import { tryHandleCommand, type CommandContext, type Controls } from '../../../src/commands/index.js';
@@ -104,6 +106,25 @@ describe('Codex phone navigation commands', () => {
     expect(card).toContain('另一个任务的回答');
     expect(card).not.toContain('刚刚的问题');
   });
+
+  it('submits collected text and images as one queued Codex turn', async () => {
+    const h = await createHarness();
+
+    await expect(h.run('/compose')).resolves.toBe(true);
+    expect(h.compositions.isActive('chat-1')).toBe(true);
+    h.compositions.add('chat-1', message('说明文字'));
+    h.compositions.add('chat-1', {
+      ...message(''),
+      messageId: 'om-image',
+      resources: [{ type: 'image', fileKey: 'img-1' }],
+    } as unknown as NormalizedMessage);
+
+    await expect(h.run('/compose send')).resolves.toBe(true);
+
+    expect(h.compositions.isActive('chat-1')).toBe(false);
+    expect(h.flushed).toHaveLength(1);
+    expect(h.flushed[0]?.map((item) => item.messageId)).toEqual(['om-command', 'om-image']);
+  });
 });
 
 async function createHarness(): Promise<{
@@ -113,6 +134,8 @@ async function createHarness(): Promise<{
   sessions: SessionStore;
   workspaces: WorkspaceStore;
   catalog: SessionCatalog;
+  compositions: CompositionStore;
+  flushed: NormalizedMessage[][];
   agent: ReturnType<typeof createFakeAgent> & {
     listThreads: ReturnType<typeof vi.fn>;
     readThread: ReturnType<typeof vi.fn>;
@@ -131,6 +154,9 @@ async function createHarness(): Promise<{
   const sessions = new SessionStore(join(tmp.profile, 'sessions.json'));
   const workspaces = new WorkspaceStore(join(tmp.profile, 'workspaces.json'));
   const catalog = new SessionCatalog(join(tmp.profile, 'session-catalog.json'));
+  const compositions = new CompositionStore();
+  const flushed: NormalizedMessage[][] = [];
+  const pending = new PendingQueue(60_000, (_scope, batch) => flushed.push(batch));
   workspaces.setCwd('chat-1', tmp.workspace);
   const threads: CodexThread[] = [
     {
@@ -243,14 +269,28 @@ async function createHarness(): Promise<{
     workspaces,
     agent,
     activeRuns,
+    compositions,
+    pending,
     controls,
     desktopProjectsProvider: async () => desktopProjects,
   });
   cleanups.push(async () => {
+    pending.cancelAll();
     await Promise.all([sessions.flush(), workspaces.flush(), catalog.flush()]);
     await tmp.cleanup();
   });
-  return { tmp, projectB, channel, sessions, workspaces, catalog, agent, run };
+  return {
+    tmp,
+    projectB,
+    channel,
+    sessions,
+    workspaces,
+    catalog,
+    compositions,
+    flushed,
+    agent,
+    run,
+  };
 }
 
 function message(content: string): NormalizedMessage {

@@ -53,6 +53,20 @@ describe('Claude IM regression boundaries', () => {
     ]);
   });
 
+  it('flushes a completed composition immediately as one batch', () => {
+    const flushed: Array<{ scope: string; batch: NormalizedMessage[] }> = [];
+    const queue = new PendingQueue(60_000, (scope, batch) => flushed.push({ scope, batch }));
+
+    queue.push('chat-1', msg('m-1', '文字'));
+    queue.push('chat-1', msg('m-2', '图片'));
+    expect(queue.flushNow('chat-1')).toBe(true);
+
+    expect(flushed).toEqual([{
+      scope: 'chat-1',
+      batch: [msg('m-1', '文字'), msg('m-2', '图片')],
+    }]);
+  });
+
   it('documents the private intake policy that drops @all and undirected group chatter', async () => {
     const source = await readFile(join(process.cwd(), 'src/bot/channel.ts'), 'utf8');
 

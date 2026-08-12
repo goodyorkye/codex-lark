@@ -6,6 +6,8 @@ import type { LarkChannel, NormalizedMessage } from '@larksuite/channel';
 import { claudeCapability, codexCapability } from '../agent/capability';
 import type { AgentAdapter } from '../agent/types';
 import type { ActiveRuns } from '../bot/active-runs';
+import type { CompositionStore, CompositionSnapshot } from '../bot/composition-store';
+import type { PendingQueue } from '../bot/pending-queue';
 import {
   accountCurrentCard,
   accountFailureCard,
@@ -57,6 +59,7 @@ import {
   codexRemoteHelpCard,
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
+  compositionInputCard,
   modelsCard,
   reasoningEffortsCard,
   projectsCard,
@@ -139,6 +142,8 @@ export interface CommandContext {
   workspaces: WorkspaceStore;
   agent: AgentAdapter;
   activeRuns: ActiveRuns;
+  compositions?: CompositionStore;
+  pending?: PendingQueue;
   processPool?: ProcessPool;
   runExecutor?: RunExecutor;
   controls: Controls;
@@ -149,6 +154,8 @@ export interface CommandContext {
   desktopProjectsProvider?: () => Promise<CodexProjectSummary[]>;
   /** Set when invoked from a CardKit 2.0 form submit. Keys are input `name`s. */
   formValue?: Record<string, unknown>;
+  /** Internal: this command intentionally queued messages that intake must preserve. */
+  preservePendingAfterCommand?: boolean;
   /** True when this invocation came from a card button click rather than a
    * text command. Determines whether to update the existing card vs send a
    * new one. */
@@ -198,6 +205,7 @@ const handlers: Record<string, Handler> = {
   '/models': handleModels,
   '/model': handleModel,
   '/approval': handleApproval,
+  '/compose': handleCompose,
 };
 
 /**
@@ -492,6 +500,99 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
     },
     { replyTo: ctx.msg.messageId },
   );
+}
+
+async function handleCompose(args: string, ctx: CommandContext): Promise<void> {
+  if (!ctx.compositions) {
+    await reply(ctx, '组合输入尚未初始化，请重启 Codex Lark。');
+    return;
+  }
+  const action = args.trim().split(/\s+/, 1)[0] || 'start';
+  if (action === 'start') {
+    let state = ctx.compositions.start(ctx.scope);
+    for (const message of ctx.pending?.cancel(ctx.scope) ?? []) {
+      state = ctx.compositions.add(ctx.scope, message);
+    }
+    await refreshCompositionCard(ctx, state);
+    return;
+  }
+  if (!ctx.compositions.isActive(ctx.scope)) {
+    await reply(ctx, '当前没有正在收集的组合输入，请从“常用操作”点击“组合输入”。');
+    return;
+  }
+  if (action === 'undo') {
+    await refreshCompositionCard(ctx, ctx.compositions.undo(ctx.scope));
+    return;
+  }
+  if (action === 'clear') {
+    await refreshCompositionCard(ctx, ctx.compositions.clear(ctx.scope));
+    return;
+  }
+  if (action === 'cancel') {
+    const state = ctx.compositions.cancel(ctx.scope);
+    await finishCompositionCard(ctx, state, 'cancelled');
+    return;
+  }
+  if (action !== 'send') {
+    await reply(ctx, '未知组合输入操作。');
+    return;
+  }
+  const current = ctx.compositions.snapshot(ctx.scope);
+  if (current.messages === 0) {
+    await refreshCompositionCard(ctx, current);
+    return;
+  }
+  if (!ctx.pending) {
+    await reply(ctx, '组合输入发送队列尚未初始化，请重启 Codex Lark。');
+    return;
+  }
+  const { messages, snapshot } = ctx.compositions.take(ctx.scope);
+  for (const message of messages) ctx.pending.push(ctx.scope, message);
+  ctx.preservePendingAfterCommand = true;
+  const sentNow = ctx.pending.flushNow(ctx.scope);
+  await finishCompositionCard(ctx, snapshot, sentNow ? 'sent' : 'queued');
+}
+
+async function refreshCompositionCard(
+  ctx: CommandContext,
+  state: CompositionSnapshot,
+): Promise<void> {
+  const card = compositionInputCard(state);
+  if (state.cardMessageId) {
+    try {
+      await updateManagedCard(ctx.channel, state.cardMessageId, card);
+      return;
+    } catch (error) {
+      log.warn('compose', 'card-update-fallback', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  const sent = await sendManagedCard(ctx.channel, ctx.msg.chatId, card, {
+    ...(ctx.fromCardAction ? {} : { replyTo: ctx.msg.messageId }),
+  });
+  ctx.compositions?.bindCard(ctx.scope, sent.messageId);
+}
+
+async function finishCompositionCard(
+  ctx: CommandContext,
+  state: CompositionSnapshot,
+  terminal: 'sent' | 'queued' | 'cancelled',
+): Promise<void> {
+  const card = compositionInputCard(state, terminal);
+  const messageId = state.cardMessageId ?? (ctx.fromCardAction ? ctx.msg.messageId : undefined);
+  if (messageId) {
+    try {
+      await updateManagedCard(ctx.channel, messageId, card);
+      forgetManagedCard(messageId);
+      return;
+    } catch (error) {
+      log.warn('compose', 'terminal-card-update-fallback', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  await sendManagedCard(ctx.channel, ctx.msg.chatId, card);
 }
 
 async function handleModels(_args: string, ctx: CommandContext): Promise<void> {

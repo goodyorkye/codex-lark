@@ -1,5 +1,6 @@
 import { basename } from 'node:path';
 import type { CodexModel, CodexThread, CodexThreadItem } from '../codex/app-server/protocol';
+import type { CompositionSnapshot } from '../bot/composition-store';
 
 export interface CodexProjectSummary {
   id?: string;
@@ -45,6 +46,7 @@ export function codexRemoteHelpCard(): object {
         '- `/tasks` — 选择或继续任务',
         '- `/new` — 在当前项目新建任务',
         '- `/models` — 选择模型',
+        '- `/compose` — 开始组合输入',
         '- `/stop` — 停止当前回合',
         '- `/status` — 查看当前遥控状态',
         '- `/help` — 显示本帮助',
@@ -264,6 +266,36 @@ export function latestTurnCard(thread: CodexThread): object {
   return card('最近一轮', elements);
 }
 
+export function compositionInputCard(
+  state: CompositionSnapshot,
+  terminal?: 'sent' | 'queued' | 'cancelled',
+): object {
+  const counts = compositionCountsText(state);
+  if (terminal === 'sent') {
+    return card('组合输入', [{ tag: 'markdown', content: `✅ 已提交，将作为同一轮发送给 Codex。\n\n${counts}` }]);
+  }
+  if (terminal === 'queued') {
+    return card('组合输入', [{ tag: 'markdown', content: `✅ 已组合完成，将在当前回复结束后作为同一轮发送。\n\n${counts}` }]);
+  }
+  if (terminal === 'cancelled') {
+    return card('组合输入', [{ tag: 'markdown', content: `已退出组合输入，未发送已收集的内容。\n\n${counts}` }]);
+  }
+  return card('组合输入', [
+    {
+      tag: 'markdown',
+      content: `继续发送文字、图片或文件，它们暂时不会交给 Codex。完成后点击“发送”，也可以直接回复“发送”。\n\n${counts}`,
+    },
+    buttonRow([
+      actionButton('发送', 'compose.send', 'primary'),
+      actionButton('撤销', 'compose.undo'),
+    ]),
+    buttonRow([
+      actionButton('清空', 'compose.clear'),
+      actionButton('退出', 'compose.cancel'),
+    ]),
+  ]);
+}
+
 export function modelsCard(models: CodexModel[], selected?: string): object {
   const visible = models.slice(0, 20);
   return card(
@@ -377,10 +409,20 @@ function remoteNavigationActions(hasCurrentTask = false): object[] {
       actionButton('新建任务', 'new'),
       actionButton('切换模型', 'models'),
     ]),
-    ...(hasCurrentTask
-      ? [buttonRow([actionButton('查看最近一轮', 'task.latest')])]
-      : []),
+    buttonRow([
+      ...(hasCurrentTask ? [actionButton('最近一轮', 'task.latest')] : []),
+      actionButton('组合输入', 'compose.start', hasCurrentTask ? 'default' : 'primary'),
+    ]),
   ];
+}
+
+function compositionCountsText(state: CompositionSnapshot): string {
+  const parts = [
+    `${state.textSegments} 段文字`,
+    `${state.images} 张图片`,
+    `${state.files} 个文件`,
+  ];
+  return `**已收集**：${parts.join(' · ')}`;
 }
 
 function buttonRow(buttons: object[]): object {

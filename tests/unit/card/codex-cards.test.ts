@@ -3,6 +3,7 @@ import {
   codexRemoteHelpCard,
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
+  compositionInputCard,
   latestTurnCard,
   modelsCard,
   projectsCard,
@@ -167,7 +168,8 @@ describe('Codex navigation cards', () => {
     expect(navigation).toContain('new');
     expect(navigation).toContain('models');
     expect(navigation).toContain('task.latest');
-    for (const label of ['最近任务', '选择项目', '新建任务', '切换模型', '查看最近一轮']) {
+    expect(navigation).toContain('compose.start');
+    for (const label of ['最近任务', '选择项目', '新建任务', '切换模型', '最近一轮', '组合输入']) {
       expect(navigation).toContain(label);
     }
     expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(3);
@@ -178,13 +180,31 @@ describe('Codex navigation cards', () => {
     const card = codexRemoteNavigationCard({ cwd: '/tmp/project-a' });
     const navigation = JSON.stringify(card);
     expect(navigation).not.toContain('task.latest');
-    expect(navigation).not.toContain('查看最近一轮');
-    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(2);
+    expect(navigation).not.toContain('最近一轮');
+    expect(navigation).toContain('组合输入');
+    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(3);
+  });
+
+  it('renders a compact composition basket with explicit controls', () => {
+    const rendered = JSON.stringify(compositionInputCard({
+      active: true,
+      messages: 4,
+      textSegments: 1,
+      images: 2,
+      files: 1,
+    }));
+    expect(rendered).toContain('组合输入');
+    expect(rendered).toContain('1 段文字');
+    expect(rendered).toContain('2 张图片');
+    expect(rendered).toContain('1 个文件');
+    for (const action of ['compose.send', 'compose.undo', 'compose.clear', 'compose.cancel']) {
+      expect(rendered).toContain(action);
+    }
   });
 
   it('shows only the focused Codex phone remote command surface', () => {
     const help = JSON.stringify(codexRemoteHelpCard());
-    for (const command of ['/projects', '/tasks', '/new', '/models', '/stop', '/status', '/help']) {
+    for (const command of ['/projects', '/tasks', '/new', '/models', '/compose', '/stop', '/status', '/help']) {
       expect(help).toContain(command);
     }
     for (const internal of ['/account', '/config', '/ps', '/exit', '/doctor', '/invite', '/remove']) {

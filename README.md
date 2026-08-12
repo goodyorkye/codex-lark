@@ -32,7 +32,9 @@ Unsigned development builds use ad-hoc signing. On first open, macOS may require
 
 ## Phone commands
 
-Normal use does not require typing commands. Every completed Codex reply includes a two-by-two **Recent tasks / Choose project / New task / Switch model** navigator. Recent tasks are ordered across projects by last activity and switch with one tap; selecting a project immediately opens its task list.
+Normal use does not require typing commands. Every completed Codex reply includes a common-actions navigator. Recent tasks are ordered across projects by last activity and switch with one tap; selecting a project immediately opens its task list.
+
+To submit text, images, and files as one turn, tap **Compose input**, send every item, then tap **Send** on the basket card or reply with `发送`. Nothing reaches Codex while collection is active; the basket also supports undo, clear, and cancel.
 
 | Command | Result |
 | --- | --- |
@@ -44,6 +46,7 @@ Normal use does not require typing commands. Every completed Codex reply include
 | `/task latest` | Fetch the latest turn from the current task |
 | `/new` | Start a new task in the current project |
 | `/models` | List models reported by the active Desktop core |
+| `/compose` | Collect text, images, and files and submit them as one turn |
 | `/model select <model>` | Select a model and open its reasoning-effort choices |
 | `/model effort <model> <effort>` | Set both model and reasoning effort for later messages |
 | `/stop` | Interrupt the active turn |

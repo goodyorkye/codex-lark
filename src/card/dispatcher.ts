@@ -3,6 +3,7 @@ import type { AgentAdapter } from '../agent/types';
 import type { ActiveRuns } from '../bot/active-runs';
 import type { ChatModeCache } from '../bot/chat-mode-cache';
 import type { PendingQueue } from '../bot/pending-queue';
+import type { CompositionStore } from '../bot/composition-store';
 import type { ProcessPool } from '../bot/process-pool';
 import type { CallbackAuth } from './callback-auth';
 import { runCommandHandler, type CommandContext, type Controls } from '../commands';
@@ -35,6 +36,7 @@ export interface CardDispatchDeps {
   runExecutor?: RunExecutor;
   controls: Controls;
   pending: PendingQueue;
+  compositions?: CompositionStore;
   chatModeCache: ChatModeCache;
   callbackAuth?: CallbackAuth;
   callbackPolicyFingerprint?: string;
@@ -106,6 +108,8 @@ export async function handleCardAction(deps: CardDispatchDeps): Promise<void> {
       }),
       workspaces: deps.workspaces,
       activeRuns: deps.activeRuns,
+      compositions: deps.compositions,
+      pending: deps.pending,
       agent: deps.agent,
       processPool: deps.processPool,
       runExecutor: deps.runExecutor,

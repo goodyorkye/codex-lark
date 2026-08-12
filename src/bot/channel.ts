@@ -17,7 +17,8 @@ import { handleCardAction } from '../card/dispatcher';
 import { CallbackAuth } from '../card/callback-auth';
 import { CallbackNonceStore } from '../card/callback-store';
 import { renderCard } from '../card/run-renderer';
-import { codexRemoteNavigationCard } from '../card/codex-cards';
+import { codexRemoteNavigationCard, compositionInputCard } from '../card/codex-cards';
+import { sendManagedCard, updateManagedCard } from '../card/managed';
 import {
   finalizeIfRunning,
   initialState,
@@ -27,7 +28,12 @@ import {
   type RunState,
 } from '../card/run-state';
 import { renderText } from '../card/text-renderer';
-import { tryHandleCommand, type Controls } from '../commands';
+import {
+  runCommandHandler,
+  tryHandleCommand,
+  type CommandContext,
+  type Controls,
+} from '../commands';
 import type { AppConfig } from '../config/schema';
 import {
   getAgentStopGraceMs,
@@ -58,6 +64,7 @@ import { recordRunSessionEvent, startRunFlow } from './run-flow';
 import { commandSessionCatalogIdentity } from './session-catalog-identity';
 import { startKeepalive } from './keepalive';
 import { PendingQueue } from './pending-queue';
+import { CompositionStore } from './composition-store';
 import { ProcessPool } from './process-pool';
 import { fetchQuotedContext, type QuotedContext } from './quote';
 import { addWorkingReaction, removeReaction } from './reaction';
@@ -174,6 +181,7 @@ export interface StartChannelDeps {
 export async function startChannel(deps: StartChannelDeps): Promise<BridgeChannel> {
   const { cfg, agent, sessions, sessionCatalog, workspaces, controls } = deps;
   const activeRuns = new ActiveRuns();
+  const compositions = new CompositionStore();
   // ChatModeCache stays per-bridge-instance — invalidated on restart along
   // with everything else. Topic-mode chats only need one chat.get() call ever.
   const chatModeCache = new ChatModeCache();
@@ -303,6 +311,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
           sessionCatalog,
           workspaces,
           activeRuns,
+          compositions,
           pending,
           msg,
           controls,
@@ -329,6 +338,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
           runExecutor: executor,
           controls,
           pending,
+          compositions,
           chatModeCache,
           callbackAuth,
           callbackPolicyFingerprintForScope: (scope) => activePolicyFingerprints.get(scope),
@@ -502,6 +512,7 @@ interface IntakeDeps {
   sessionCatalog?: SessionCatalog;
   workspaces: WorkspaceStore;
   activeRuns: ActiveRuns;
+  compositions: CompositionStore;
   pending: PendingQueue;
   msg: NormalizedMessage;
   controls: Controls;
@@ -518,6 +529,7 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     sessionCatalog,
     workspaces,
     activeRuns,
+    compositions,
     pending,
     msg,
     controls,
@@ -574,7 +586,7 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     return;
   }
 
-  const handled = await tryHandleCommand({
+  const commandContext: CommandContext = {
     channel,
     msg,
     scope,
@@ -583,6 +595,8 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     workspaces,
     agent,
     activeRuns,
+    compositions,
+    pending,
     sessionCatalog,
     sessionCatalogIdentity: await commandSessionCatalogIdentity({
       msg,
@@ -595,10 +609,42 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     runExecutor: executor,
     processPool: pool,
     controls,
-  });
+  };
+  const handled = await tryHandleCommand(commandContext);
   if (handled) {
-    const dropped = pending.cancel(scope);
+    const dropped = commandContext.preservePendingAfterCommand ? [] : pending.cancel(scope);
     log.info('intake', 'command', { scope, droppedPending: dropped.length });
+    return;
+  }
+
+  if (compositions.isActive(scope)) {
+    if (msg.resources.length === 0 && msg.content.trim() === '发送') {
+      await runCommandHandler('compose', 'send', commandContext);
+      return;
+    }
+    const state = compositions.add(scope, msg);
+    const card = compositionInputCard(state);
+    if (state.cardMessageId) {
+      try {
+        await updateManagedCard(channel, state.cardMessageId, card);
+      } catch (error) {
+        log.warn('compose', 'card-update-fallback', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        const sent = await sendManagedCard(channel, msg.chatId, card, { replyTo: msg.messageId });
+        compositions.bindCard(scope, sent.messageId);
+      }
+    } else {
+      const sent = await sendManagedCard(channel, msg.chatId, card, { replyTo: msg.messageId });
+      compositions.bindCard(scope, sent.messageId);
+    }
+    log.info('compose', 'collected', {
+      scope,
+      messages: state.messages,
+      textSegments: state.textSegments,
+      images: state.images,
+      files: state.files,
+    });
     return;
   }
 
@@ -1218,7 +1264,7 @@ function buildPrompt(
   // When the debounce window merged messages (possibly from several senders —
   // common in bot-at-bot group chats), annotate each segment with its sender
   // so the agent can tell who said what. Single-message batches stay verbatim.
-  const annotate = batch.length > 1;
+  const annotate = new Set(batch.map((message) => message.senderId)).size > 1;
   const texts = batch
     .map((m) => {
       const text = stripAttachmentRefs(m.content, fileKeys).trim();
