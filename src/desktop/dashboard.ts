@@ -294,16 +294,36 @@ function html(res: ServerResponse, body: string): void {
   res.end(body);
 }
 
-function dashboardHtml(token: string): string {
+export function dashboardHtml(token: string): string {
   const safeToken = JSON.stringify(token).replace(/</g, '\\u003c');
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>codex-lark</title><style>
 :root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f6fb;color:#17213a}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at top,#e8edff 0,#f7f8fb 52%,#eef2f8 100%)}main{width:min(560px,100%);background:rgba(255,255,255,.9);border:1px solid #dfe5f0;border-radius:28px;box-shadow:0 28px 80px rgba(43,59,98,.16);padding:36px;text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:12px;font-weight:750;font-size:26px}.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#111827,#5865f2);color:white;display:grid;place-items:center}.pill{display:inline-flex;gap:8px;align-items:center;background:#eef2ff;color:#4251c5;border-radius:999px;padding:8px 12px;margin-top:22px;font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:#f4a323;box-shadow:0 0 0 5px rgba(244,163,35,.14)}.online .dot{background:#24a865}.error .dot{background:#dc4c64}h1{font-size:28px;margin:24px 0 8px}p{line-height:1.6;color:#58647d;margin:0 auto;max-width:430px}.qr{margin:24px auto 8px;width:304px;max-width:100%;padding:12px;background:white;border:1px solid #e5e9f2;border-radius:22px}.qr img{display:block;width:100%;border-radius:12px}.actions{display:flex;justify-content:center;gap:12px;margin-top:26px;flex-wrap:wrap}button,a.button{border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;background:#4d5de5;color:white}.secondary{background:#edf0f7!important;color:#34405c!important}.foot{margin-top:26px;font-size:12px;color:#8993a7}.hidden{display:none}@media(prefers-color-scheme:dark){:root{background:#0d1220;color:#f1f4ff}body{background:radial-gradient(circle at top,#1f2945,#0d1220 60%)}main{background:rgba(19,26,43,.94);border-color:#2d3853}p{color:#aeb8ce}.pill{background:#202944;color:#aeb8ff}.secondary{background:#283149!important;color:#d8deee!important}.foot{color:#7f8aa2}}
 </style></head><body><main id="card"><div class="brand"><span class="logo">C</span> codex-lark</div><div class="pill"><span class="dot"></span><span id="phase">正在启动</span></div><h1 id="title">正在启动 codex-lark</h1><p id="detail">正在寻找 ChatGPT / Codex Desktop…</p><div id="qr" class="qr hidden"><img id="qrimg" alt="飞书扫码二维码"></div><div class="actions"><a id="open" class="button hidden" target="_blank" rel="noreferrer">在浏览器打开授权页</a><button id="retry" class="hidden">重新检查</button><button id="stop" class="secondary">停止 codex-lark</button></div><div class="foot">只监听本机 127.0.0.1 · App Secret 不会发送到浏览器或云端</div></main><script>
-const token=${safeToken};const card=document.querySelector('#card'),phase=document.querySelector('#phase'),title=document.querySelector('#title'),detail=document.querySelector('#detail'),qr=document.querySelector('#qr'),qrimg=document.querySelector('#qrimg'),open=document.querySelector('#open'),retry=document.querySelector('#retry');
+const token=${safeToken};
+const card=document.querySelector('#card'),phase=document.querySelector('#phase'),title=document.querySelector('#title'),detail=document.querySelector('#detail'),qr=document.querySelector('#qr'),qrimg=document.querySelector('#qrimg'),open=document.querySelector('#open'),retry=document.querySelector('#retry');
 const labels={starting:'正在启动',scan:'等待扫码',authorizing:'正在授权',checking:'正在检查',connecting:'正在连接',online:'已在线',error:'需要处理'};
-async function poll(){try{const r=await fetch('/api/status',{headers:{'x-codex-lark-token':token}});const s=await r.json();phase.textContent=labels[s.phase]||s.phase;title.textContent=s.title;detail.textContent=s.detail;card.className=s.phase;qr.classList.toggle('hidden',!s.qrDataUrl);if(s.qrDataUrl)qrimg.src=s.qrDataUrl;open.classList.toggle('hidden',!s.registrationUrl);if(s.registrationUrl)open.href=s.registrationUrl;retry.classList.toggle('hidden',s.phase!=='error');}catch(e){detail.textContent='本地服务正在退出…'}}setTimeout(poll,700)}poll();
-retry.onclick=async()=>{retry.classList.add('hidden');await fetch('/api/retry',{method:'POST',headers:{'x-codex-lark-token':token}});poll()};document.querySelector('#stop').onclick=async()=>{await fetch('/api/stop',{method:'POST',headers:{'x-codex-lark-token':token}});title.textContent='codex-lark 已停止';detail.textContent='可以关闭这个页面。'};
-</script></main></body></html>`;
+async function poll(){
+  try{
+    const r=await fetch('/api/status',{headers:{'x-codex-lark-token':token}});
+    const s=await r.json();
+    phase.textContent=labels[s.phase]||s.phase;
+    title.textContent=s.title;
+    detail.textContent=s.detail;
+    card.className=s.phase;
+    qr.classList.toggle('hidden',!s.qrDataUrl);
+    if(s.qrDataUrl)qrimg.src=s.qrDataUrl;
+    open.classList.toggle('hidden',!s.registrationUrl);
+    if(s.registrationUrl)open.href=s.registrationUrl;
+    retry.classList.toggle('hidden',s.phase!=='error');
+  }catch(e){
+    detail.textContent='本地服务正在退出…';
+  }
+  setTimeout(poll,700);
+}
+void poll();
+retry.onclick=async()=>{retry.classList.add('hidden');await fetch('/api/retry',{method:'POST',headers:{'x-codex-lark-token':token}});};
+document.querySelector('#stop').onclick=async()=>{await fetch('/api/stop',{method:'POST',headers:{'x-codex-lark-token':token}});title.textContent='codex-lark 已停止';detail.textContent='可以关闭这个页面。'};
+</script></body></html>`;
 }

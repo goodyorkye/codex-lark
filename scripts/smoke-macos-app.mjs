@@ -48,6 +48,11 @@ try {
   if (!response.ok || !html.includes('codex-lark') || !html.includes('/api/status')) {
     throw new Error('dashboard HTML contract failed');
   }
+  const dashboardScript = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  if (!dashboardScript) throw new Error('dashboard script is missing');
+  // Parse the exact JavaScript shipped to Safari. This catches a broken panel
+  // even when the HTTP server itself starts successfully.
+  new Function(dashboardScript);
   const second = spawn(executable, [], {
     env: {
       ...process.env,
