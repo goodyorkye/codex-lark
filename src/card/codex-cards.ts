@@ -25,12 +25,7 @@ export function codexRemoteNavigationElements(
     : escapeMd(projectName);
   return [
     { tag: 'markdown', content: `📍 **当前**：${current}`, text_size: 'notation' },
-    buttonRow([
-      actionButton('最近任务', 'tasks.recent', 'primary'),
-      actionButton('项目', 'projects'),
-      actionButton('新建', 'new'),
-      actionButton('模型', 'models'),
-    ]),
+    ...remoteNavigationActions(),
   ];
 }
 
@@ -58,12 +53,7 @@ export function codexRemoteHelpCard(): object {
         '需要授权时直接点击审批卡片。',
       ].join('\n'),
     },
-    buttonRow([
-      actionButton('最近任务', 'tasks.recent', 'primary'),
-      actionButton('项目', 'projects'),
-      actionButton('新建', 'new'),
-      actionButton('模型', 'models'),
-    ]),
+    ...remoteNavigationActions(),
   ]);
 }
 
@@ -90,12 +80,7 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
         `🏃 **运行**：${info.activeRun ? '进行中' : '空闲'}`,
       ].join('\n\n'),
     },
-    buttonRow([
-      actionButton('最近任务', 'tasks.recent', 'primary'),
-      actionButton('项目', 'projects'),
-      actionButton('新建', 'new'),
-      actionButton('模型', 'models'),
-    ]),
+    ...remoteNavigationActions(),
   ]);
 }
 
@@ -277,6 +262,19 @@ function navigationActions(primaryCommand: 'projects' | 'tasks.recent'): object 
     actionButton('新建', 'new'),
     actionButton('模型', 'models'),
   ]);
+}
+
+function remoteNavigationActions(): object[] {
+  return [
+    buttonRow([
+      actionButton('最近任务', 'tasks.recent', 'primary'),
+      actionButton('选择项目', 'projects'),
+    ]),
+    buttonRow([
+      actionButton('新建任务', 'new'),
+      actionButton('切换模型', 'models'),
+    ]),
+  ];
 }
 
 function buttonRow(buttons: object[]): object {

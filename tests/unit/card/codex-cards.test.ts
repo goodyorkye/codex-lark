@@ -75,6 +75,10 @@ describe('Codex navigation cards', () => {
     expect(navigation).toContain('projects');
     expect(navigation).toContain('new');
     expect(navigation).toContain('models');
+    for (const label of ['最近任务', '选择项目', '新建任务', '切换模型']) {
+      expect(navigation).toContain(label);
+    }
+    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(2);
     expect(collectTags(card)).not.toContain('action');
   });
 

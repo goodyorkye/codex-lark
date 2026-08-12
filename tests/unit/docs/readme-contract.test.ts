@@ -29,8 +29,8 @@ describe('README product contract', () => {
       '仅本次允许',
       'attachments',
       '飞书附件',
-      '最近任务 / 项目 / 新建 / 模型',
-      'Recent tasks / Projects / New / Models',
+      '最近任务 / 选择项目 / 新建任务 / 切换模型',
+      'Recent tasks / Choose project / New task / Switch model',
     ]) expect(docs).toContain(phrase);
   });
 
