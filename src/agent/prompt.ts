@@ -66,6 +66,13 @@ export interface BuildAgentPromptInput {
   attachments?: BridgePromptAttachment[];
 }
 
+export interface CodexPromptProjection {
+  /** The only text rendered as the user's message in Codex Desktop. */
+  text: string;
+  /** A short initial task name so Desktop does not fold it as unnamed. */
+  title?: string;
+}
+
 export function buildAgentPrompt(input: BuildAgentPromptInput): string {
   const sections = [
     promptSection('bridge_context', input.context),
@@ -101,4 +108,44 @@ export function safeJsonStringify(value: unknown): string {
     .replace(/&/g, '\\u0026')
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
+}
+
+/**
+ * Project the legacy lark-channel prompt envelope onto App Server's native
+ * input. The bridge envelope is transport state, not model context: Codex sees
+ * exactly the text the user sent from Feishu, just as if it was typed in the
+ * Desktop composer.
+ */
+export function projectAgentPromptForCodex(prompt: string): CodexPromptProjection {
+  const userSection = readPromptSection(prompt, 'user_input');
+  const user = userSection ? parseJsonObject(userSection) : undefined;
+  const text = typeof user?.text === 'string' && user.text.trim()
+    ? user.text
+    : prompt;
+  return { text, title: promptTitle(text) };
+}
+
+function readPromptSection(input: string, tag: string): string | undefined {
+  const match = input.match(new RegExp(`<${tag}>\\n([\\s\\S]*?)\\n</${tag}>`));
+  return match?.[1];
+}
+
+function parseJsonObject(input: string): Record<string, unknown> | undefined {
+  try {
+    const value = JSON.parse(input) as unknown;
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function promptTitle(input: string, maxChars = 48): string | undefined {
+  const normalized = input.replace(/\s+/g, ' ').trim();
+  if (!normalized) return undefined;
+  const chars = Array.from(normalized);
+  return chars.length > maxChars
+    ? `${chars.slice(0, maxChars - 1).join('')}…`
+    : normalized;
 }

@@ -14,6 +14,8 @@ import type {
 import { rpcIdKey } from '../../codex/app-server/protocol';
 import { discoverDesktopBinary, type DesktopBinaryLocation } from '../../codex/desktop-binary';
 import { activateDesktopThread } from '../../codex/desktop-route';
+import { projectAgentPromptForCodex } from '../prompt';
+import { normalizeSessionPreview } from '../../session/preview';
 
 export interface CodexAppServerAdapterOptions {
   binaryPath?: string;
@@ -86,8 +88,12 @@ export class CodexAppServerAdapter implements AgentAdapter {
         await client.start();
         if (stopped) return;
 
-        const isNewThread = !options.threadId;
-        const thread = options.threadId
+        const projection = projectAgentPromptForCodex(options.prompt);
+        const replaceLegacyThread = options.threadId
+          ? await shouldReplaceLegacyBridgeThread(client, options.threadId)
+          : false;
+        const isNewThread = !options.threadId || replaceLegacyThread;
+        const thread = options.threadId && !replaceLegacyThread
           ? await client.resumeThread(options.threadId, {
               cwd: options.cwd,
               model: options.model,
@@ -100,7 +106,12 @@ export class CodexAppServerAdapter implements AgentAdapter {
               approvalPolicy: approvalPolicyFor(options),
               sandbox: options.sandbox,
             });
-        if (isNewThread) activateDesktopThread(thread.id, this.options.env);
+        if (isNewThread) {
+          if (projection.title) {
+            await client.setThreadName(thread.id, projection.title).catch(() => {});
+          }
+          activateDesktopThread(thread.id, this.options.env);
+        }
         queue.push({
           type: 'system',
           threadId: thread.id,
@@ -159,7 +170,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
 
         const turn = await client.startTurn({
           threadId: thread.id,
-          text: options.prompt,
+          text: projection.text,
           images: options.images,
           cwd: options.cwd,
           model: options.model,
@@ -246,6 +257,25 @@ export class CodexAppServerAdapter implements AgentAdapter {
       env: this.options.env,
     });
     return this.client;
+  }
+}
+
+async function shouldReplaceLegacyBridgeThread(
+  client: CodexAppServerClient,
+  threadId: string,
+): Promise<boolean> {
+  try {
+    const thread = await client.readThread(threadId);
+    const preview = typeof thread.preview === 'string' ? thread.preview : '';
+    if (!preview.includes('<bridge_context>') || !preview.includes('<user_input>')) return false;
+    if (!thread.name) {
+      const repairedName = normalizeSessionPreview(preview, 48);
+      if (repairedName) await client.setThreadName(threadId, repairedName).catch(() => {});
+    }
+    return true;
+  } catch {
+    // If history inspection is unavailable, preserve the existing resume path.
+    return false;
   }
 }
 

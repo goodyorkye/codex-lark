@@ -200,6 +200,10 @@ export class CodexAppServerClient extends EventEmitter {
     return result.thread;
   }
 
+  async setThreadName(threadId: string, name: string): Promise<void> {
+    await this.request('thread/name/set', { threadId, name });
+  }
+
   async startTurn(options: StartTurnOptions): Promise<{ id: string; status?: string }> {
     const input: Array<Record<string, unknown>> = [{ type: 'text', text: options.text }];
     for (const path of options.images ?? []) input.push({ type: 'localImage', path });

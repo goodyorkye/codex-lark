@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildAgentPrompt } from '../../../src/agent/prompt';
+import { buildAgentPrompt, projectAgentPromptForCodex } from '../../../src/agent/prompt';
 
 describe('agent prompt builder', () => {
   it('serializes untrusted message, quote, card, and comment text without closing bridge tags', () => {
@@ -97,6 +97,40 @@ describe('agent prompt builder', () => {
     expect(prompt).not.toContain('<quoted_messages>');
     expect(prompt).not.toContain('<interactive_cards>');
     expect(prompt).not.toContain('<comment_context>');
+  });
+
+  it('sends only the real user text to Codex Desktop', () => {
+    const prompt = buildAgentPrompt({
+      context: {
+        chatId: 'oc_dm',
+        chatType: 'p2p',
+        senderId: 'ou_owner',
+        source: 'im',
+      },
+      instructions: ['internal bridge rule'],
+      userInput: '帮我检查这个项目',
+      quotedMessages: [{
+        messageId: 'om_quote',
+        senderId: 'ou_other',
+        rawContentType: 'text',
+        content: 'quoted untrusted text',
+      }],
+    });
+
+    const projected = projectAgentPromptForCodex(prompt);
+
+    expect(projected.text).toBe('帮我检查这个项目');
+    expect(projected.title).toBe('帮我检查这个项目');
+    expect(JSON.stringify(projected)).not.toContain('oc_dm');
+    expect(JSON.stringify(projected)).not.toContain('quoted untrusted text');
+    expect(JSON.stringify(projected)).not.toContain('internal bridge rule');
+  });
+
+  it('falls back to an ordinary visible prompt outside the bridge envelope', () => {
+    expect(projectAgentPromptForCodex('plain prompt')).toEqual({
+      text: 'plain prompt',
+      title: 'plain prompt',
+    });
   });
 
   it('keeps bridge agents inside the current lark-channel profile by default', () => {

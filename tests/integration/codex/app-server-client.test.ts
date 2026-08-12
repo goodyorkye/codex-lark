@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -34,7 +34,8 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
   });
 
   it('streams a new task and does not lose notifications sent beside turn/start', async () => {
-    const binary = await fakeAppServer();
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-request-log-')), 'requests.jsonl');
+    const binary = await fakeAppServer(requestLog);
     const adapter = new CodexAppServerAdapter({
       binaryPath: binary,
       env: {
@@ -45,7 +46,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     });
     const run = adapter.run({
       runId: 'run-1',
-      prompt: 'hello',
+      prompt: `<bridge_context>\n{"chatId":"oc_test","chatType":"p2p","senderId":"ou_test","source":"im"}\n</bridge_context>\n\n<bridge_instructions>\n["internal"]\n</bridge_instructions>\n\n<user_input>\n{"text":"hello"}\n</user_input>`,
       cwd: '/tmp/project',
     });
     const events: AgentEvent[] = [];
@@ -57,25 +58,69 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       expect.objectContaining({ type: 'text', delta: 'hello from desktop' }),
       expect.objectContaining({ type: 'done', threadId: 'thread-1' }),
     ]));
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.find((message) => message.method === 'thread/start')?.params).not.toHaveProperty('developerInstructions');
+    expect(requests.find((message) => message.method === 'thread/name/set')?.params).toEqual({
+      threadId: 'thread-1',
+      name: 'hello',
+    });
+    expect(requests.find((message) => message.method === 'turn/start')?.params).toMatchObject({
+      input: [{ type: 'text', text: 'hello' }],
+    });
+    expect(requests.find((message) => message.method === 'turn/start')?.params).not.toHaveProperty('additionalContext');
+    await adapter.shutdown();
+  });
+
+  it('moves a legacy bridge-prefixed session to a clean new Desktop task', async () => {
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-legacy-log-')), 'requests.jsonl');
+    const binary = await fakeAppServer(requestLog, true);
+    const adapter = new CodexAppServerAdapter({
+      binaryPath: binary,
+      env: {
+        ...process.env,
+        CODEX_LARK_DESKTOP_IPC: '0',
+        CODEX_LARK_DESKTOP_AUTO_FOLLOW: '0',
+      },
+    });
+    const run = adapter.run({
+      runId: 'run-legacy',
+      threadId: 'legacy-thread',
+      prompt: `<bridge_context>\n{"chatId":"oc_test","chatType":"p2p","senderId":"ou_test","source":"im"}\n</bridge_context>\n\n<user_input>\n{"text":"继续处理"}\n</user_input>`,
+      cwd: '/tmp/project',
+    });
+    for await (const _event of run.events) {
+      // Drain the run.
+    }
+
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.some((message) => message.method === 'thread/resume')).toBe(false);
+    expect(requests.some((message) => message.method === 'thread/start')).toBe(true);
+    expect(requests.filter((message) => message.method === 'thread/name/set').map((message) => message.params)).toEqual([
+      { threadId: 'legacy-thread', name: '你好' },
+      { threadId: 'thread-1', name: '继续处理' },
+    ]);
     await adapter.shutdown();
   });
 });
 
-async function fakeAppServer(): Promise<string> {
+async function fakeAppServer(requestLog?: string, legacyPreview = false): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'codex-lark-app-server-'));
   const binary = join(root, 'codex');
   const script = `#!/usr/bin/env node
 const readline = require('node:readline');
+const fs = require('node:fs');
 const rl = readline.createInterface({ input: process.stdin });
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\\n');
 rl.on('line', (line) => {
   const message = JSON.parse(line);
+  ${requestLog ? `fs.appendFileSync(${JSON.stringify(requestLog)}, JSON.stringify(message) + '\\n');` : ''}
   if (message.method === 'initialize') return send({ id: message.id, result: { userAgent: 'fake' } });
   if (message.method === 'initialized') return;
   if (message.method === 'thread/list') return send({ id: message.id, result: { data: [{ id: 'thread-1', cwd: '/tmp/project', preview: 'hello' }], nextCursor: null } });
-  if (message.method === 'thread/read') return send({ id: message.id, result: { thread: { id: message.params.threadId, cwd: '/tmp/project', turns: [] } } });
+  if (message.method === 'thread/read') return send({ id: message.id, result: { thread: { id: message.params.threadId, cwd: '/tmp/project', turns: [], ${legacyPreview ? `preview: '<bridge_context>\\n{}\\n</bridge_context>\\n\\n<user_input>\\n{"text":"你好"}\\n</user_input>', name: null,` : ''} } } });
   if (message.method === 'model/list') return send({ id: message.id, result: { data: [{ id: 'gpt-test', model: 'gpt-test', displayName: 'GPT Test', isDefault: true }] } });
   if (message.method === 'thread/start' || message.method === 'thread/resume') return send({ id: message.id, result: { thread: { id: 'thread-1', cwd: message.params.cwd || '/tmp/project' } } });
+  if (message.method === 'thread/name/set') return send({ id: message.id, result: {} });
   if (message.method === 'turn/start') {
     send({ id: message.id, result: { turn: { id: 'turn-1', status: 'inProgress' } } });
     send({ id: 900, method: 'item/commandExecution/requestApproval', params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', command: 'echo hello', cwd: '/tmp/project', reason: 'test' } });
