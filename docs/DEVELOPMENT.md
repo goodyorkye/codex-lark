@@ -41,4 +41,4 @@ pnpm smoke:app-server
 - Run dependency and license audits.
 - Pack on a clean runner and inspect the tarball contents.
 - Test both `npx codex-lark` first-run QR registration and an already-configured restart.
-- Create a Git tag matching the package version only after those checks pass.
+- Create and push a `v*` Git tag matching the package version only after those checks pass. The `release.yml` workflow publishes to npm through Trusted Publishing (OIDC), attaches the tarball and checksum to a GitHub prerelease, and stores no npm token in GitHub.
