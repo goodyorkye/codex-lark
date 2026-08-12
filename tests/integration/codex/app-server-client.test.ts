@@ -61,7 +61,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     await client.stop();
   });
 
-  it('sends attachment-only audio without synthetic text input', async () => {
+  it('sends audio with a visible Desktop history label and localAudio input', async () => {
     const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-audio-log-')), 'requests.jsonl');
     const client = new CodexAppServerClient({
       binaryPath: await fakeAppServer(requestLog),
@@ -69,10 +69,15 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       requestTimeoutMs: 3_000,
     });
     await client.start();
-    await client.startTurn({ threadId: 'thread-1', text: '', audios: ['/tmp/voice.opus'] });
+    await client.startTurn({
+      threadId: 'thread-1',
+      text: '',
+      audios: [{ path: '/tmp/voice.opus', name: '飞书语音.opus' }],
+    });
 
     const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     expect(requests.find((message) => message.method === 'turn/start')?.params.input).toEqual([
+      { type: 'text', text: '[音频：飞书语音.opus](</tmp/voice.opus>)' },
       { type: 'localAudio', path: '/tmp/voice.opus' },
     ]);
     await client.stop();
@@ -149,6 +154,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
         { type: 'text', text: 'hello' },
         { type: 'text', text: '[附件：example.txt](</tmp/example.txt>)' },
         { type: 'localImage', path: '/tmp/example.png' },
+        { type: 'text', text: '[音频：example.ogg](</tmp/example.ogg>)' },
         { type: 'localAudio', path: '/tmp/example.ogg' },
       ],
       model: 'gpt-test',

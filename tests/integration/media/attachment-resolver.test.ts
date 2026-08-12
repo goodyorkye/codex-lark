@@ -86,6 +86,25 @@ describe('hash media attachment resolver', () => {
     expect(attachment?.absPath).toMatch(/\.opus$/);
   });
 
+  it('sniffs an Ogg voice message when Feishu supplies no filename or useful MIME', async () => {
+    const root = await tempDir();
+    const ogg = Buffer.concat([Buffer.from('OggS'), Buffer.alloc(32)]);
+    const cache = new MediaCache(fakeChannel(ogg, 'application/vnd.feishu.voice'), root);
+
+    const [attachment] = await cache.resolve([{
+      messageId: 'om_voice_without_name',
+      resource: { type: 'audio', fileKey: 'voice_key' } as never,
+    }]);
+
+    expect(attachment).toMatchObject({
+      kind: 'audio',
+      mime: 'audio/ogg',
+      originalName: '飞书语音.ogg',
+      decision: 'accepted',
+    });
+    expect(attachment?.absPath).toMatch(/\.ogg$/);
+  });
+
   it('recovers safe PDF and text extensions from names when Feishu returns octet-stream', async () => {
     const root = await tempDir();
     const cache = new MediaCache(fakeChannel(Buffer.from('file-bytes'), 'application/octet-stream'), root);

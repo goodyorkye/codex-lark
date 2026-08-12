@@ -156,8 +156,12 @@ export async function startRunFlow(input: StartRunFlowInput): Promise<StartRunFl
         input.capability.agentId === 'codex'
           ? policy.attachments
               .filter((attachment) => attachment.kind === 'audio' && attachment.decision === 'accepted')
-              .map((attachment) => attachment.path)
-              .filter((path): path is string => Boolean(path))
+              .flatMap((attachment) => attachment.path
+                ? [{
+                    path: attachment.path,
+                    ...(attachment.originalName ? { name: attachment.originalName } : {}),
+                  }]
+                : [])
           : undefined,
       files:
         input.capability.agentId === 'codex'

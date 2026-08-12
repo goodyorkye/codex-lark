@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, open, readdir, rename, rm, stat } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import type { LarkChannel, ResourceDescriptor } from '@larksuite/channel';
 import { paths } from '../config/paths';
@@ -95,8 +95,14 @@ export class MediaCache {
 
     const tmpStat = await stat(tmpPath);
     const hash = await hashFile(tmpPath);
-    const kind = kindForDownloadedResource(resourceKind, contentType);
-    const mime = effectiveMime(kind, contentType, r.fileName);
+    // Feishu voice messages frequently arrive without a filename and with a
+    // vendor/octet-stream content type. Trusting only that metadata gives the
+    // cache a .bin suffix, which Codex rejects even when the bytes are valid
+    // Ogg/Opus audio. Sniff the small format header before choosing the kind
+    // and safe extension.
+    const detectedMime = await sniffAudioMime(tmpPath);
+    const kind = kindForDownloadedResource(resourceKind, detectedMime ?? contentType);
+    const mime = effectiveMime(kind, detectedMime ?? contentType, r.fileName);
     const ext = safeExtensionForMime(mime);
     const absPath = join(this.rootDir, `${hash}.${ext}`);
     try {
@@ -115,7 +121,11 @@ export class MediaCache {
       source: 'lark',
       sourceMessageId: messageId,
       sourceFileKey: r.fileKey,
-      ...(r.fileName ? { originalName: r.fileName } : {}),
+      ...(r.fileName
+        ? { originalName: r.fileName }
+        : kind === 'audio'
+          ? { originalName: `飞书语音.${ext}` }
+          : {}),
     };
     log.info('media', 'downloaded', {
       path: candidate.absPath,
@@ -186,6 +196,27 @@ function fileMimeForName(originalName: string | undefined): string | undefined {
 
 function normalizedMime(contentType: string | undefined): string {
   return contentType?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+}
+
+async function sniffAudioMime(path: string): Promise<string | undefined> {
+  const handle = await open(path, 'r');
+  try {
+    const header = Buffer.alloc(64);
+    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+    const bytes = header.subarray(0, bytesRead);
+    if (bytes.subarray(0, 4).equals(Buffer.from('OggS'))) return 'audio/ogg';
+    if (bytes.subarray(0, 4).equals(Buffer.from('RIFF'))
+      && bytes.subarray(8, 12).equals(Buffer.from('WAVE'))) return 'audio/wav';
+    if (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1]! & 0xf6) === 0xf0) return 'audio/aac';
+    if (bytes.subarray(0, 3).equals(Buffer.from('ID3'))
+      || (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0)) return 'audio/mpeg';
+    if (bytes.length >= 12 && bytes.subarray(4, 8).equals(Buffer.from('ftyp'))) return 'audio/mp4';
+    if (bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) return 'audio/webm';
+    if (bytes.subarray(0, 6).equals(Buffer.from('#!AMR\n'))) return 'audio/amr';
+    return undefined;
+  } finally {
+    await handle.close();
+  }
 }
 
 /** Delete files under the media cache whose mtime is older than maxAgeMs. */

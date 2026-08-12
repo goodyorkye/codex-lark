@@ -46,7 +46,7 @@ export interface StartTurnOptions {
   threadId: string;
   text: string;
   images?: readonly string[];
-  audios?: readonly string[];
+  audios?: readonly (string | { path: string; name?: string })[];
   files?: readonly { path: string; name?: string }[];
   cwd?: string;
   model?: string;
@@ -247,10 +247,17 @@ export class CodexAppServerClient extends EventEmitter {
       input.push({ type: 'text', text: options.text });
     }
     for (const file of options.files ?? []) {
-      input.push({ type: 'text', text: localFileReference(file) });
+      input.push({ type: 'text', text: localFileReference(file, '附件') });
     }
     for (const path of options.images ?? []) input.push({ type: 'localImage', path });
-    for (const path of options.audios ?? []) input.push({ type: 'localAudio', path });
+    for (const audio of options.audios ?? []) {
+      const file = typeof audio === 'string' ? { path: audio } : audio;
+      // Codex understands localAudio, but current Desktop builds do not render
+      // an audio-only userMessage. A visible local link keeps the user's input
+      // present in Desktop history while localAudio remains the model input.
+      input.push({ type: 'text', text: localFileReference(file, '音频') });
+      input.push({ type: 'localAudio', path: file.path });
+    }
     if (input.length === 0) input.push({ type: 'text', text: options.text });
     const result = await this.request<{ turn: { id: string; status?: string } }>('turn/start', {
       threadId: options.threadId,
@@ -392,10 +399,10 @@ export class CodexAppServerClient extends EventEmitter {
   }
 }
 
-function localFileReference(file: { path: string; name?: string }): string {
+function localFileReference(file: { path: string; name?: string }, kind: '附件' | '音频'): string {
   const fallbackName = file.path.split(/[\\/]/).pop() || '文件';
   const label = escapeMarkdownLabel(file.name?.trim() || fallbackName);
-  return `[附件：${label}](<${file.path}>)`;
+  return `[${kind}：${label}](<${file.path}>)`;
 }
 
 function escapeMarkdownLabel(value: string): string {

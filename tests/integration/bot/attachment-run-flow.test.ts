@@ -66,7 +66,7 @@ describe('attachment run flow', () => {
     expect(result.ok).toBe(true);
     expect(h.agent.runOptions[0]).toMatchObject({
       images: ['/media/image.png'],
-      audios: ['/media/audio.ogg'],
+      audios: [{ path: '/media/audio.ogg' }],
       files: [{ path: '/media/file.txt', name: 'notes.txt' }],
     });
   });

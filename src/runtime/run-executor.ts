@@ -23,7 +23,7 @@ export interface SubmitRunInput {
   model?: string;
   reasoningEffort?: string;
   images?: readonly string[];
-  audios?: readonly string[];
+  audios?: readonly (string | AgentLocalFile)[];
   files?: readonly AgentLocalFile[];
   stopGraceMs?: number;
   nowait?: boolean;

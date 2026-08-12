@@ -50,7 +50,7 @@ export interface AgentRunOptions {
   model?: string;
   reasoningEffort?: string;
   images?: readonly string[];
-  audios?: readonly string[];
+  audios?: readonly (string | AgentLocalFile)[];
   files?: readonly AgentLocalFile[];
   sandbox?: CodexSandboxMode;
   permissionMode?: ClaudePermissionMode;

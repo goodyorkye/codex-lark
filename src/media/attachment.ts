@@ -53,6 +53,7 @@ const MIME_EXT: Record<string, string> = {
   'audio/ogg': 'ogg',
   'audio/opus': 'opus',
   'audio/wav': 'wav',
+  'audio/webm': 'webm',
   'audio/x-m4a': 'm4a',
   'audio/x-wav': 'wav',
   'application/ogg': 'ogg',
