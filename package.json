@@ -48,7 +48,7 @@
     "prepublishOnly": "pnpm test && pnpm typecheck && pnpm build"
   },
   "dependencies": {
-    "@clack/prompts": "^1.4.0",
+    "@clack/prompts": "^1.7.0",
     "@larksuite/channel": "^0.2.0",
     "commander": "^12.1.0",
     "cross-spawn": "^7.0.6",
