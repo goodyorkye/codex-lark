@@ -455,7 +455,7 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
       source: 'im',
       chatId: ctx.msg.chatId,
       actorId: ctx.msg.senderId,
-      ...(ctx.msg.threadId ? { threadId: ctx.msg.threadId } : {}),
+      ...(ctx.chatMode === 'topic' && ctx.msg.threadId ? { threadId: ctx.msg.threadId } : {}),
     },
     attachments: [],
     prompt: 'Continue the selected Codex task.',
@@ -465,6 +465,8 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
     capability,
     profileConfig: ctx.controls.profileConfig,
     now: Date.now(),
+    codexHome: ctx.controls.profileConfig.codex?.codexHome,
+    inheritCodexHome: ctx.controls.profileConfig.codex?.inheritCodexHome,
   });
   if (!policy.ok) {
     await reply(ctx, policy.rejectReason.userVisible);

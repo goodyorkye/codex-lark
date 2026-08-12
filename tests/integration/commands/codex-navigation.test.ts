@@ -3,10 +3,12 @@ import { join } from 'node:path';
 import type { NormalizedMessage } from '@larksuite/channel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ActiveRuns } from '../../../src/bot/active-runs.js';
+import { commandSessionCatalogIdentity } from '../../../src/bot/session-catalog-identity.js';
 import type { CodexThread } from '../../../src/codex/app-server/protocol.js';
 import { tryHandleCommand, type CommandContext, type Controls } from '../../../src/commands/index.js';
 import { createDefaultProfileConfig } from '../../../src/config/profile-schema.js';
-import { SessionCatalog, type SessionCatalogIdentity } from '../../../src/session/catalog.js';
+import { canUseDm } from '../../../src/policy/access.js';
+import { SessionCatalog } from '../../../src/session/catalog.js';
 import { SessionStore } from '../../../src/session/store.js';
 import { WorkspaceStore } from '../../../src/workspace/store.js';
 import { createFakeAgent } from '../../helpers/fake-agent.js';
@@ -89,6 +91,19 @@ describe('Codex phone navigation commands', () => {
     expect(card).toContain('刚刚的回答');
     expect(card).not.toContain('更早的问题');
   });
+
+  it('fetches the selected task after switching between Desktop tasks', async () => {
+    const h = await createHarness();
+
+    await expect(h.run('/task use thread-c')).resolves.toBe(true);
+    await expect(h.run('/task latest')).resolves.toBe(true);
+
+    expect(h.agent.readThread).toHaveBeenLastCalledWith('thread-c');
+    const card = JSON.stringify(h.channel.sent.at(-1)?.content);
+    expect(card).toContain('另一个任务的问题');
+    expect(card).toContain('另一个任务的回答');
+    expect(card).not.toContain('刚刚的问题');
+  });
 });
 
 async function createHarness(): Promise<{
@@ -117,13 +132,6 @@ async function createHarness(): Promise<{
   const workspaces = new WorkspaceStore(join(tmp.profile, 'workspaces.json'));
   const catalog = new SessionCatalog(join(tmp.profile, 'session-catalog.json'));
   workspaces.setCwd('chat-1', tmp.workspace);
-  const identity: SessionCatalogIdentity = {
-    scopeId: 'chat-1',
-    agentId: 'codex',
-    cwdRealpath: tmp.workspace,
-    policyFingerprint: 'test-policy',
-  };
-  catalog.upsertActive({ ...identity, threadId: 'thread-a' });
   const threads: CodexThread[] = [
     {
       id: 'thread-a',
@@ -136,6 +144,12 @@ async function createHarness(): Promise<{
       cwd: projectBRealpath,
       name: '项目 B 的任务',
       updatedAt: Date.now(),
+    },
+    {
+      id: 'thread-c',
+      cwd: tmp.workspace,
+      name: '项目 A 的另一个任务',
+      updatedAt: Date.now() - 120_000,
     },
   ];
   const agent = Object.assign(createFakeAgent(), {
@@ -159,8 +173,17 @@ async function createHarness(): Promise<{
       }, {
         id: 'turn-latest',
         items: [
-          { type: 'userMessage' as const, content: [{ type: 'text', text: '刚刚的问题' }] },
-          { type: 'agentMessage' as const, text: '刚刚的回答' },
+          {
+            type: 'userMessage' as const,
+            content: [{
+              type: 'text',
+              text: threadId === 'thread-c' ? '另一个任务的问题' : '刚刚的问题',
+            }],
+          },
+          {
+            type: 'agentMessage' as const,
+            text: threadId === 'thread-c' ? '另一个任务的回答' : '刚刚的回答',
+          },
         ],
       }],
     })),
@@ -168,7 +191,11 @@ async function createHarness(): Promise<{
   const profileConfig = createDefaultProfileConfig({
     agentKind: 'codex',
     accounts: { app: { id: 'app-id', secret: 'secret', tenant: 'feishu' } },
-    codex: { binaryPath: '/Applications/Codex.app/Contents/Resources/codex' },
+    codex: {
+      binaryPath: '/Applications/Codex.app/Contents/Resources/codex',
+      codexHome: join(tmp.root, 'custom-codex-home'),
+      inheritCodexHome: true,
+    },
   });
   profileConfig.workspaces.default = tmp.workspace;
   const controls = {
@@ -183,6 +210,16 @@ async function createHarness(): Promise<{
     cfg: profileConfig,
     processId: 'proc-1',
   } satisfies Controls;
+  const identity = await commandSessionCatalogIdentity({
+    msg: message(''),
+    scope: 'chat-1',
+    mode: 'p2p',
+    workspaces,
+    controls,
+    access: canUseDm(profileConfig, controls, 'ou-user'),
+  });
+  if (!identity) throw new Error('expected a Codex session catalog identity');
+  catalog.upsertActive({ ...identity, threadId: 'thread-a' });
   const activeRuns = new ActiveRuns();
   const desktopProjects = [
     { id: 'project-b', name: 'Desktop 项目 B', cwd: projectBRealpath, rootPaths: [projectBRealpath], taskCount: 1 },
