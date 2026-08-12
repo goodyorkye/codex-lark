@@ -108,11 +108,12 @@ describe('run card renderer snapshots', () => {
 
     const done = JSON.stringify(renderCard(
       stateFrom([{ type: 'text', delta: '完成' }, { type: 'done', terminationReason: 'normal' }]),
-      { codexNavigation: { cwd: '/tmp/project-a' } },
+      { codexNavigation: { cwd: '/tmp/project-a', hasCurrentTask: true } },
     ));
     expect(done).toContain('tasks.recent');
     expect(done).toContain('projects');
     expect(done).toContain('models');
+    expect(done).toContain('task.latest');
   });
 
   it('keeps approval controls compatible with Feishu card schema V2', () => {

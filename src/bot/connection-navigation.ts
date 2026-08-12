@@ -50,6 +50,7 @@ export async function sendConnectionNavigation(
     card: codexRemoteNavigationCard({
       ...(latest?.cwdRealpath ? { cwd: latest.cwdRealpath } : {}),
       ...(taskTitle ? { taskTitle } : {}),
+      hasCurrentTask: Boolean(latest?.threadId),
     }),
   });
   log.info('navigation', 'connection-pushed', {

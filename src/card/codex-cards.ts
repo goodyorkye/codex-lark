@@ -13,6 +13,7 @@ export interface CodexProjectSummary {
 export interface CodexRemoteNavigationInfo {
   cwd?: string;
   taskTitle?: string;
+  hasCurrentTask?: boolean;
 }
 
 export function codexRemoteNavigationCard(info: CodexRemoteNavigationInfo = {}): object {
@@ -28,7 +29,7 @@ export function codexRemoteNavigationElements(
     : escapeMd(projectName);
   return [
     { tag: 'markdown', content: `📍 **当前**：${current}`, text_size: 'notation' },
-    ...remoteNavigationActions(),
+    ...remoteNavigationActions(Boolean(info.hasCurrentTask || info.taskTitle)),
   ];
 }
 
@@ -87,7 +88,7 @@ export function codexRemoteStatusCard(info: CodexRemoteStatusInfo): object {
         `🏃 **运行**：${info.activeRun ? '进行中' : '空闲'}`,
       ].join('\n\n'),
     },
-    ...remoteNavigationActions(),
+    ...remoteNavigationActions(Boolean(info.threadId)),
   ]);
 }
 
@@ -366,7 +367,7 @@ function navigationActions(primaryCommand: 'projects' | 'tasks.recent'): object 
   ]);
 }
 
-function remoteNavigationActions(): object[] {
+function remoteNavigationActions(hasCurrentTask = false): object[] {
   return [
     buttonRow([
       actionButton('最近任务', 'tasks.recent', 'primary'),
@@ -376,7 +377,9 @@ function remoteNavigationActions(): object[] {
       actionButton('新建任务', 'new'),
       actionButton('切换模型', 'models'),
     ]),
-    buttonRow([actionButton('查看最近一轮', 'task.latest')]),
+    ...(hasCurrentTask
+      ? [buttonRow([actionButton('查看最近一轮', 'task.latest')])]
+      : []),
   ];
 }
 

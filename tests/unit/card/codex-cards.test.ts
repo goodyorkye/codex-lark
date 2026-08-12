@@ -174,6 +174,14 @@ describe('Codex navigation cards', () => {
     expect(collectTags(card)).not.toContain('action');
   });
 
+  it('hides latest-turn retrieval until a current task is selected', () => {
+    const card = codexRemoteNavigationCard({ cwd: '/tmp/project-a' });
+    const navigation = JSON.stringify(card);
+    expect(navigation).not.toContain('task.latest');
+    expect(navigation).not.toContain('查看最近一轮');
+    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(2);
+  });
+
   it('shows only the focused Codex phone remote command surface', () => {
     const help = JSON.stringify(codexRemoteHelpCard());
     for (const command of ['/projects', '/tasks', '/new', '/models', '/stop', '/status', '/help']) {

@@ -809,7 +809,7 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
         }
       : {}),
     ...(controls.profileConfig.agentKind === 'codex'
-      ? { codexNavigation: { cwd } }
+      ? { codexNavigation: { cwd, hasCurrentTask: true } }
       : {}),
   };
 
@@ -956,7 +956,11 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
       }
       await channel.send(
         chatId,
-        { card: codexRemoteNavigationCard({ cwd, taskTitle }) },
+        { card: codexRemoteNavigationCard({
+          cwd,
+          taskTitle,
+          hasCurrentTask: Boolean(active?.threadId),
+        }) },
         sendOpts,
       );
     }
