@@ -41,6 +41,7 @@ Normal use does not require typing commands. Every completed Codex reply include
 | `/tasks` | List recent tasks in the selected project |
 | `/task use <id>` | Continue an existing task |
 | `/task show <id>` | Show the task transcript |
+| `/task latest` | Fetch the latest turn from the current task |
 | `/new` | Start a new task in the current project |
 | `/models` | List models reported by the active Desktop core |
 | `/model select <model>` | Select a model and open its reasoning-effort choices |

@@ -6,6 +6,7 @@ import { ActiveRuns } from '../../../src/bot/active-runs.js';
 import type { CodexThread } from '../../../src/codex/app-server/protocol.js';
 import { tryHandleCommand, type CommandContext, type Controls } from '../../../src/commands/index.js';
 import { createDefaultProfileConfig } from '../../../src/config/profile-schema.js';
+import { SessionCatalog, type SessionCatalogIdentity } from '../../../src/session/catalog.js';
 import { SessionStore } from '../../../src/session/store.js';
 import { WorkspaceStore } from '../../../src/workspace/store.js';
 import { createFakeAgent } from '../../helpers/fake-agent.js';
@@ -75,6 +76,19 @@ describe('Codex phone navigation commands', () => {
     expect(h.sessions.getModel('chat-1')).toBe('gpt-test');
     expect(h.sessions.getReasoningEffort('chat-1')).toBe('high');
   });
+
+  it('fetches only the latest turn from the active Desktop task on demand', async () => {
+    const h = await createHarness();
+
+    await expect(h.run('/task latest')).resolves.toBe(true);
+
+    expect(h.agent.readThread).toHaveBeenCalledWith('thread-a');
+    const card = JSON.stringify(h.channel.sent.at(-1)?.content);
+    expect(card).toContain('最近一轮');
+    expect(card).toContain('刚刚的问题');
+    expect(card).toContain('刚刚的回答');
+    expect(card).not.toContain('更早的问题');
+  });
 });
 
 async function createHarness(): Promise<{
@@ -83,8 +97,10 @@ async function createHarness(): Promise<{
   channel: ReturnType<typeof createFakeChannel>;
   sessions: SessionStore;
   workspaces: WorkspaceStore;
+  catalog: SessionCatalog;
   agent: ReturnType<typeof createFakeAgent> & {
     listThreads: ReturnType<typeof vi.fn>;
+    readThread: ReturnType<typeof vi.fn>;
   };
   run(content: string): Promise<boolean>;
 }> {
@@ -99,7 +115,15 @@ async function createHarness(): Promise<{
   channel.createCard = vi.fn(channel.createCard.bind(channel));
   const sessions = new SessionStore(join(tmp.profile, 'sessions.json'));
   const workspaces = new WorkspaceStore(join(tmp.profile, 'workspaces.json'));
+  const catalog = new SessionCatalog(join(tmp.profile, 'session-catalog.json'));
   workspaces.setCwd('chat-1', tmp.workspace);
+  const identity: SessionCatalogIdentity = {
+    scopeId: 'chat-1',
+    agentId: 'codex',
+    cwdRealpath: tmp.workspace,
+    policyFingerprint: 'test-policy',
+  };
+  catalog.upsertActive({ ...identity, threadId: 'thread-a' });
   const threads: CodexThread[] = [
     {
       id: 'thread-a',
@@ -127,6 +151,19 @@ async function createHarness(): Promise<{
         { reasoningEffort: 'high' },
       ],
     }]),
+    readThread: vi.fn(async (threadId: string) => ({
+      ...threads.find((thread) => thread.id === threadId)!,
+      turns: [{
+        id: 'turn-old',
+        items: [{ type: 'userMessage' as const, content: [{ type: 'text', text: '更早的问题' }] }],
+      }, {
+        id: 'turn-latest',
+        items: [
+          { type: 'userMessage' as const, content: [{ type: 'text', text: '刚刚的问题' }] },
+          { type: 'agentMessage' as const, text: '刚刚的回答' },
+        ],
+      }],
+    })),
   });
   const profileConfig = createDefaultProfileConfig({
     agentKind: 'codex',
@@ -164,6 +201,8 @@ async function createHarness(): Promise<{
     scope: 'chat-1',
     chatMode: 'p2p',
     sessions,
+    sessionCatalog: catalog,
+    sessionCatalogIdentity: identity,
     workspaces,
     agent,
     activeRuns,
@@ -171,10 +210,10 @@ async function createHarness(): Promise<{
     desktopProjectsProvider: async () => desktopProjects,
   });
   cleanups.push(async () => {
-    await Promise.all([sessions.flush(), workspaces.flush()]);
+    await Promise.all([sessions.flush(), workspaces.flush(), catalog.flush()]);
     await tmp.cleanup();
   });
-  return { tmp, projectB, channel, sessions, workspaces, agent, run };
+  return { tmp, projectB, channel, sessions, workspaces, catalog, agent, run };
 }
 
 function message(content: string): NormalizedMessage {

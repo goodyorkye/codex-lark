@@ -61,6 +61,7 @@ import {
   reasoningEffortsCard,
   projectsCard,
   recentTasksCard,
+  latestTurnCard,
   taskDetailCard,
   tasksCard,
   type CodexProjectSummary,
@@ -404,6 +405,16 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
   }
   if (action === 'new') {
     await handleNew('', ctx);
+    return;
+  }
+  if (action === 'latest') {
+    const currentThreadId = currentCodexThreadId(ctx);
+    if (!currentThreadId || !ctx.agent.readThread) {
+      await reply(ctx, '当前还没有可查看的 Codex 任务。');
+      return;
+    }
+    const thread = await ctx.agent.readThread(currentThreadId);
+    await sendCodexCard(ctx, latestTurnCard(thread));
     return;
   }
   if (!threadId || !ctx.agent.readThread) {

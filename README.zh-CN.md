@@ -40,6 +40,7 @@ App Server 部分遵循 [OpenAI 官方 Codex App Server 文档](https://develope
 | `/tasks` | 显示当前项目的最近任务 |
 | `/task use <id>` | 继续已有任务 |
 | `/task show <id>` | 查看任务的输入和输出详情 |
+| `/task latest` | 主动获取当前任务最近一轮的输入和输出 |
 | `/new` | 在当前项目新建任务 |
 | `/models` | 显示 Desktop 内置核心报告的可用模型 |
 | `/model select <模型>` | 选择模型并打开该模型的推理强度选项 |

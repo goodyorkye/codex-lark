@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import type { CodexModel, CodexThread } from '../codex/app-server/protocol';
+import type { CodexModel, CodexThread, CodexThreadItem } from '../codex/app-server/protocol';
 
 export interface CodexProjectSummary {
   id?: string;
@@ -51,6 +51,7 @@ export function codexRemoteHelpCard(): object {
         '**精确操作（通常直接点卡片即可）**',
         '- `/project use <路径>`',
         '- `/task use <任务ID>` · `/task show <任务ID>`',
+        '- `/task latest` — 查看当前任务最近一轮',
         '- `/model select <模型>` · `/model effort <模型> <推理强度>`',
         '',
         '需要授权时直接点击审批卡片。',
@@ -240,6 +241,28 @@ export function taskDetailCard(thread: CodexThread): object {
   return card('任务详情', elements.slice(-18));
 }
 
+export function latestTurnCard(thread: CodexThread): object {
+  const turn = [...(thread.turns ?? [])]
+    .reverse()
+    .find((candidate) => (candidate.items ?? []).some(isConversationItem));
+  if (!turn) {
+    return card('最近一轮', [{ tag: 'markdown', content: '当前任务还没有可显示的对话记录。' }]);
+  }
+  const elements: object[] = [{
+    tag: 'markdown',
+    content: `**${escapeMd(threadTitle(thread))}**`,
+  }];
+  for (const item of turn.items ?? []) {
+    if (item.type === 'userMessage') {
+      const text = userMessageText(item);
+      if (text) elements.push({ tag: 'markdown', content: `**你**\n${truncate(text, 1800)}` });
+    } else if (item.type === 'agentMessage' && item.text?.trim()) {
+      elements.push({ tag: 'markdown', content: `**Codex**\n${truncate(item.text, 3000)}` });
+    }
+  }
+  return card('最近一轮', elements);
+}
+
 export function modelsCard(models: CodexModel[], selected?: string): object {
   const visible = models.slice(0, 20);
   return card(
@@ -353,6 +376,7 @@ function remoteNavigationActions(): object[] {
       actionButton('新建任务', 'new'),
       actionButton('切换模型', 'models'),
     ]),
+    buttonRow([actionButton('查看最近一轮', 'task.latest')]),
   ];
 }
 
@@ -371,6 +395,23 @@ function buttonRow(buttons: object[]): object {
 
 function threadTitle(thread: CodexThread): string {
   return thread.name?.trim() || thread.preview?.trim() || '未命名任务';
+}
+
+function isConversationItem(item: CodexThreadItem): boolean {
+  return item.type === 'agentMessage'
+    ? Boolean(item.text?.trim())
+    : item.type === 'userMessage' && Boolean(userMessageText(item));
+}
+
+function userMessageText(item: CodexThreadItem): string {
+  return Array.isArray(item.content)
+    ? item.content
+        .filter((part) => part && typeof part === 'object' && (part as { type?: string }).type === 'text')
+        .map((part) => String((part as { text?: unknown }).text ?? ''))
+        .filter(Boolean)
+        .join('\n')
+        .trim()
+    : '';
 }
 
 function shortId(id: string): string {

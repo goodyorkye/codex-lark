@@ -3,6 +3,7 @@ import {
   codexRemoteHelpCard,
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
+  latestTurnCard,
   modelsCard,
   projectsCard,
   reasoningEffortsCard,
@@ -48,6 +49,34 @@ describe('Codex navigation cards', () => {
       }],
     });
     expect(JSON.stringify(detail)).toContain('你好，我来处理');
+  });
+
+  it('renders only the latest conversational turn on demand', () => {
+    const latest = latestTurnCard({
+      id: 'thread-1',
+      cwd: '/tmp/demo',
+      name: '继续工作',
+      turns: [{
+        id: 'turn-old',
+        items: [
+          { type: 'userMessage', content: [{ type: 'text', text: '较早的问题' }] },
+          { type: 'agentMessage', text: '较早的回答' },
+        ],
+      }, {
+        id: 'turn-latest',
+        items: [
+          { type: 'userMessage', content: [{ type: 'text', text: '最近的问题' }] },
+          { type: 'agentMessage', text: '最近的回答' },
+        ],
+      }],
+    });
+    const rendered = JSON.stringify(latest);
+    expect(rendered).toContain('最近一轮');
+    expect(rendered).toContain('继续工作');
+    expect(rendered).toContain('最近的问题');
+    expect(rendered).toContain('最近的回答');
+    expect(rendered).not.toContain('较早的问题');
+    expect(rendered).not.toContain('较早的回答');
   });
 
   it('renders reasoning-effort choices for the selected model', () => {
@@ -137,10 +166,11 @@ describe('Codex navigation cards', () => {
     expect(navigation).toContain('projects');
     expect(navigation).toContain('new');
     expect(navigation).toContain('models');
-    for (const label of ['最近任务', '选择项目', '新建任务', '切换模型']) {
+    expect(navigation).toContain('task.latest');
+    for (const label of ['最近任务', '选择项目', '新建任务', '切换模型', '查看最近一轮']) {
       expect(navigation).toContain(label);
     }
-    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(2);
+    expect(collectTags(card).filter((tag) => tag === 'column_set')).toHaveLength(3);
     expect(collectTags(card)).not.toContain('action');
   });
 
