@@ -2,60 +2,58 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 describe('README product contract', () => {
-  it('documents the no-separate-CLI Desktop architecture in both languages', async () => {
+  it('leads with continuing existing Desktop work from the phone', async () => {
     const docs = await readDocs();
     for (const phrase of [
-      'no separate Codex CLI',
-      '不单独安装 Codex CLI',
-      'ChatGPT.app/Contents/Resources/codex',
-      'Codex App Server',
-      'Desktop IPC',
-      'App Secret',
+      'Continue your Codex Desktop tasks',
+      '继续电脑上的 Codex Desktop 任务',
+      'lightweight phone remote for Codex Desktop',
+      'Codex Desktop 的轻量手机遥控器',
+      'That single assistant can control multiple projects and tasks',
+      '只用这一个机器人，就能控制整台电脑上 Codex Desktop 的多个项目和多个任务',
+      'Card buttons, one-tap switching',
+      '卡片按钮，点击即切换',
       'npx -y codex-lark@latest',
     ]) expect(docs).toContain(phrase);
   });
 
-  it('documents phone controls, files, models, and explicit approvals', async () => {
+  it('describes user-visible phone capabilities without a slash-command manual', async () => {
     const docs = await readDocs();
     for (const phrase of [
-      '/projects',
-      '/tasks',
-      '/new',
-      '/task show',
-      '/models',
-      '/model select',
-      '/model effort',
-      '/stop',
-      'Allow once',
-      '仅本次允许',
-      'attachments',
-      '飞书附件',
-      '组合输入',
       'Compose input',
-      '/compose',
+      '组合输入',
+      'reasoning effort',
+      '推理强度',
+      'permission requests',
+      '权限请求',
     ]) expect(docs).toContain(phrase);
+    expect(docs).not.toContain('| `/projects`');
+    expect(docs).not.toContain('| `/tasks`');
   });
 
-  it('documents closed access, workspace defaults, and document-scoped comments', async () => {
-    const docs = await readDocs();
-    expect(docs).toContain('closed by default');
-    expect(docs).toContain('其他访问名单默认关闭');
-    expect(docs).toContain('"defaultAccess": "workspace"');
-    expect(docs).toContain('legacy `sandbox`');
-    expect(docs).toContain('旧版 `sandbox`');
-    expect(docs).toContain('Cloud-doc comments are document-scoped');
-    expect(docs).toContain('云文档评论按文档权限生效');
-  });
-
-  it('keeps contributor checks and destructive profile flags visible', async () => {
+  it('keeps setup intentionally short and pressure-free', async () => {
     const docs = await readDocs();
     for (const phrase of [
-      'pnpm test',
-      'pnpm typecheck',
-      'pnpm build',
-      '--purge --yes',
-      '--include-secrets --yes',
+      'Start in three steps',
+      '三步开始使用',
+      'no OpenAI API key',
+      '无需填写 OpenAI API Key',
+      'no Feishu developer console',
+      '无需进入飞书开发者后台',
     ]) expect(docs).toContain(phrase);
+    expect(docs).not.toContain('--profile');
+    expect(docs).not.toContain('profile export');
+  });
+
+  it('shows the Feishu card experience near the introduction', async () => {
+    const docs = await readDocs();
+    expect(docs.match(/docs\/images\/feishu-card-navigation\.png/g)).toHaveLength(2);
+  });
+
+  it('credits both upstream reference projects', async () => {
+    const docs = await readDocs();
+    expect(docs.match(/https:\/\/github\.com\/zarazhangrui\/lark-coding-agent-bridge/g)).toHaveLength(2);
+    expect(docs.match(/https:\/\/github\.com\/Emanuele-web04\/remodex/g)).toHaveLength(2);
   });
 
   it('keeps CLI help aligned with foreground startup and workspace flags', async () => {
@@ -71,8 +69,8 @@ describe('README product contract', () => {
 
 async function readDocs(): Promise<string> {
   const [en, zh] = await Promise.all([
+    readFile(new URL('../../../README.en.md', import.meta.url), 'utf8'),
     readFile(new URL('../../../README.md', import.meta.url), 'utf8'),
-    readFile(new URL('../../../README.zh-CN.md', import.meta.url), 'utf8'),
   ]);
   return `${en}\n${zh}`;
 }

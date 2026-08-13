@@ -14,7 +14,7 @@ Files under `src/vendor/remodex-ipc/` are modified from Remodex Desktop IPC modu
 
 Licensed under the Apache License, Version 2.0. A full copy is in [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt). Modifications include `.cjs` module conversion, import-path changes, codex-lark integration hooks, explicit disable behavior, and product-specific logging.
 
-Upstream project: <https://github.com/remodex-labs/remodex>
+Upstream project: <https://github.com/Emanuele-web04/remodex>
 
 ## Runtime packages
 

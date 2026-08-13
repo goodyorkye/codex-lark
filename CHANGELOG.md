@@ -4,6 +4,13 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-13
+
+### Changed
+
+- Display the current `codex-lark` version in the foreground terminal startup title.
+- Make the concise Chinese guide the default repository README, with English available separately, an anonymized Feishu card preview, and links to the upstream reference projects.
+
 ## [0.2.0] - 2026-08-13
 
 ### Added

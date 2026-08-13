@@ -1,153 +1,109 @@
 # codex-lark
 
-Control the Codex Desktop tasks on your Mac or Windows PC from Feishu or Lark. Install no separate Codex CLI, expose no public web server, and create no developer-console bot by hand.
+**用手机飞书，随时继续电脑上的 Codex Desktop 任务。**
 
-[简体中文](README.zh-CN.md) · [Configuration](docs/CONFIGURATION.md) · [Architecture](docs/ARCHITECTURE.md) · [Security](SECURITY.md) · [Roadmap](ROADMAP.md)
+你不需要在手机上运行另一个 Agent，也不用重新描述工作背景。`codex-lark` 把电脑中已有的项目和任务带到飞书，让你离开电脑后仍能接着处理，回到电脑时又可以继续使用同一个任务。
 
-> Status: early preview. macOS is tested locally; Windows support has cross-platform automated coverage configured and is awaiting broader real-device validation. Desktop IPC mirroring remains experimental because that local Desktop interface is not a documented public contract.
+**用飞书扫一次码，即可一键创建并绑定专属机器人。只用这一个机器人，就能控制整台电脑上 Codex Desktop 的多个项目和多个任务。**
 
-## What it does
+**飞书中采用卡片式按钮操作。** 最近任务、项目、模型、推理强度和组合输入都可以直接点击和切换，不用记命令，也不用反复输入名称。
 
-- Finds the Codex core bundled with `ChatGPT.app`/`Codex.app` on macOS or the signed `OpenAI.Codex` Microsoft Store package on Windows; it never falls back to a `codex` executable on `PATH`.
-- Reads projects, task lists, full task history, and available models through Codex App Server.
-- Starts a new task or continues an existing one from Feishu/Lark.
-- Streams text, reasoning summaries, tool activity, usage, errors, and completion state into live cards.
-- Sends images and downloaded attachments to Codex as local inputs.
-- Presents command, file-change, and permission approvals as signed card actions.
-- Optionally mirrors active Desktop-owned tasks over the local Desktop IPC bus, based on the relevant Remodex implementation.
-- Creates a PersonalAgent by QR code with `@larksuite/channel`; no Feishu developer-console setup is required.
+[English](README.en.md) · [常见问题](docs/TROUBLESHOOTING.md) · [隐私说明](docs/PRIVACY.md)
 
-The App Server portion follows the [official OpenAI Codex App Server documentation](https://developers.openai.com/codex/app-server/): JSONL over stdio, initialization, threads, turns, models, streaming notifications, and server-initiated approvals.
+<p align="center">
+  <img src="docs/images/feishu-card-navigation.png" width="420" alt="飞书中的 Codex Desktop 常用操作卡片">
+</p>
 
-## Easiest setup
+## 它适合什么场景
 
-Requirements: Node.js 20.12+ and a signed-in official Desktop app: ChatGPT/Codex Desktop on macOS 13+, or Codex Desktop installed from Microsoft Store on Windows.
+- 电脑上的 Codex 正在执行任务，你想用手机查看进展或处理审批。
+- 临时离开电脑后，想从飞书继续某个已有任务。
+- 同时进行多个项目，希望在手机上快速切换，而不是重新建立上下文。
+- 想把文字、图片、语音和文件一起交给 Codex，但不想使用远程桌面。
 
-Run directly without installing:
+`codex-lark` 的重点不是“在飞书里再造一个 Codex”，而是让飞书成为 **Codex Desktop 的轻量手机遥控器**。
+
+## 手机上可以做什么
+
+- 查看并切换电脑上的项目和任务。
+- 继续已有任务，或在某个项目中快速新建任务。
+- 发送文字、图片、语音和文件。
+- 使用“组合输入”，把多条文字和多个附件作为同一轮内容发送。
+- 查看 Codex 的实时回复和当前执行状态。
+- 主动获取当前任务最近一轮记录，补上电脑端发生的上下文。
+- 在手机上允许或拒绝命令执行、文件修改等权限请求。
+- 选择模型和推理强度，并随时停止正在进行的任务。
+
+项目、任务、模型和常用操作都通过飞书卡片完成。你可以在多个项目和任务之间快速来回切换；日常使用直接点按钮或发送消息即可，不需要记命令。
+
+## 三步开始使用
+
+准备好：
+
+- Node.js 20.12 或更高版本
+- 已登录的官方 Codex Desktop
+  - macOS：ChatGPT 或 Codex Desktop
+  - Windows：从 Microsoft Store 安装的 Codex Desktop
+- 手机飞书或 Lark
+
+### 1. 打开电脑上的 Codex Desktop
+
+确认它已经登录并能正常使用。
+
+### 2. 在电脑终端运行
 
 ```bash
 npx -y codex-lark@latest
 ```
 
-On first run the terminal displays a QR code. Scan it with Feishu/Lark, then leave the terminal open while the bridge is in use. The terminal shows Desktop discovery, connection, and online status. Press Ctrl+C to stop. No browser opens, and no separate Codex CLI is installed or invoked.
+### 3. 用飞书扫描二维码
 
-For frequent use, install once and launch with a shorter command:
+第一次运行时，终端会显示二维码。扫码完成后，飞书助手会主动发来常用操作卡片，直接点击就可以开始。
 
-```bash
-npm install -g codex-lark
-codex-lark
-```
+就这些。无需安装 Codex CLI，无需填写 OpenAI API Key，无需进入飞书开发者后台配置机器人，也不会打开浏览器或要求公网服务器。
 
-The current release runs only in the foreground. Closing the terminal stops the bridge; OS service registration is intentionally deferred.
+以后再次使用，只要运行同一条命令即可；已有配置会自动保留，不需要重复扫码。
 
-## Phone commands
+## 日常使用
 
-Normal use does not require typing commands. Every completed Codex reply includes a common-actions navigator. Recent tasks are ordered across projects by last activity and switch with one tap; selecting a project immediately opens its task list.
+保持终端窗口打开，然后在飞书中：
 
-To submit text, images, and files as one turn, tap **Compose input**, send every item, then tap **Send** on the basket card or reply with `发送`. Nothing reaches Codex while collection is active; the basket also supports undo, clear, and cancel.
+1. 从“最近任务”或“项目列表”选择要继续的工作。
+2. 像普通聊天一样发送消息。
+3. 需要一起发送文字和附件时，点击“组合输入”。
+4. Codex 请求权限时，直接在审批卡片中选择是否允许。
+5. 需要回到电脑时，打开 Codex Desktop 中的同一个任务继续即可。
 
-| Command | Result |
-| --- | --- |
-| `/projects` | List Codex projects discovered from task history |
-| `/project use <path>` | Select a project for this chat |
-| `/tasks` | List recent tasks in the selected project |
-| `/task use <id>` | Continue an existing task |
-| `/task show <id>` | Show the task transcript |
-| `/task latest` | Fetch the latest turn from the current task |
-| `/new` | Start a new task in the current project |
-| `/models` | List models reported by the active Desktop core |
-| `/compose` | Collect text, images, and files and submit them as one turn |
-| `/model select <model>` | Select a model and open its reasoning-effort choices |
-| `/model effort <model> <effort>` | Set both model and reasoning effort for later messages |
-| `/stop` | Interrupt the active turn |
-| `/status` | Show the current project, task, model, and run state |
-| `/help` | Show the phone remote commands |
+按 `Ctrl+C` 可以停止程序；关闭终端也会断开手机连接，但不会删除 Codex 任务或飞书配置。
 
-A model and reasoning-effort choice overrides the current task and becomes the default for later new tasks. Switching to another existing task preserves that task's previous model settings.
+## 为什么用起来没有压力
 
-The legacy `/reset`, `/resume`, `/cd`, and `/ws` commands are redundant in Codex phone-remote mode and are replaced by `/new`, `/tasks`, and `/projects`. Internal account, process, reconnect, and group-access maintenance commands are not exposed in the phone remote UI.
+- **沿用 Desktop 上下文**：手机和电脑继续的是同一项工作。
+- **不安装另一套 Codex**：直接使用官方 Desktop 已有的登录和任务。
+- **扫码即用**：机器人创建和连接由程序完成。
+- **一个机器人管理全部工作**：不需要为每个项目或任务分别创建机器人。
+- **卡片按钮，点击即切换**：项目、任务、模型、推理强度和组合输入都不需要记命令。
+- **数据留在本机**：本地配置和临时附件保存在电脑上，敏感日志会脱敏。
+- **同时支持 macOS 和 Windows**：Desktop 升级后，重启 `codex-lark` 即会重新识别当前版本。
 
-Approval cards offer **Allow once**, **Allow for session** where supported, and **Decline**. The bridge does not silently approve a request.
+## 使用须知
 
-Cloud-doc comments are document-scoped: people who can access the document can see and use its comment thread according to Feishu permissions.
+- 电脑需要保持开机，终端需要保持运行。
+- 电脑需要能够正常访问 OpenAI 和飞书/Lark。
+- Windows 请使用 Microsoft Store 安装的官方 Codex Desktop。
+- Desktop 的部分本机交互能力可能随官方版本变化；遇到问题请查看[常见问题](docs/TROUBLESHOOTING.md)。
 
-## How the no-CLI promise works
+## 更多资料
 
-`codex-lark` does launch a local App Server process, but the executable comes from the installed official Desktop app. On macOS it looks like:
+- [常见问题](docs/TROUBLESHOOTING.md)
+- [隐私说明](docs/PRIVACY.md)
+- [安全说明](SECURITY.md)
+- [开发与贡献](docs/DEVELOPMENT.md)
+- [技术架构](docs/ARCHITECTURE.md)
 
-```text
-/Applications/ChatGPT.app/Contents/Resources/codex app-server --listen stdio://
-```
+项目使用 MIT 许可证。本项目不隶属于 OpenAI、飞书、字节跳动或 Remodex，也未获得这些项目的官方背书。第三方代码来源见 [NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-On Windows the equivalent `codex.exe` is resolved inside the installed `OpenAI.Codex` package. Because Windows can deny direct process creation inside `WindowsApps`, the signed Desktop core and its required helpers are copied into a versioned per-user runtime cache under `~/.codex-lark/runtime/` before launch. They still come from the installed Desktop package; the bridge neither downloads nor searches for a separate CLI. The bridge does not search `PATH` on either platform.
+## 参考项目
 
-That is not a separately installed Codex CLI. Desktop owns its installation, updates, local task store, and ChatGPT authentication. An optional local IPC follower makes Desktop-started activity visible to the bridge and exposes bridge-started activity back to Desktop when the current app version supports it.
-
-## Data and permissions
-
-State is stored under `~/.codex-lark/` by default. Set `CODEX_LARK_HOME` for an isolated development profile.
-
-Fresh profiles use the canonical configuration:
-
-```json
-{
-  "permissions": {
-    "defaultAccess": "workspace",
-    "maxAccess": "full"
-  }
-}
-```
-
-The legacy `sandbox` field is accepted only when migrating older bridge configurations. It is not the recommended configuration surface.
-
-The QR creator is resolved as the application owner and is the initial administrator. Access lists are otherwise closed by default. Secrets are encrypted at rest through the local keystore implementation; logs redact credentials, resource identifiers, prompts, and local paths.
-The Feishu/Lark App Secret remains in the local bridge process and its encrypted local configuration; the terminal QR does not print it.
-
-See [docs/PRIVACY.md](docs/PRIVACY.md) and [SECURITY.md](SECURITY.md) before operating this on a shared computer.
-
-## Development
-
-Requirements: Node.js 22 and pnpm. Real integration checks require macOS 13+ with ChatGPT/Codex Desktop or Windows with the Microsoft Store Codex Desktop package.
-
-```bash
-corepack enable
-pnpm install
-pnpm test
-pnpm typecheck
-pnpm build
-```
-
-Run the development terminal bridge:
-
-```bash
-pnpm build
-node dist/cli.cjs
-```
-
-`run` remains as a compatibility spelling for the same foreground startup:
-
-```bash
-codex-lark run
-codex-lark profile export codex --output ./profile.json
-codex-lark profile remove codex
-codex-lark profile remove codex --purge --yes
-codex-lark profile export codex --include-secrets --yes
-```
-
-Foreground startup skips lark-cli installation by default; chat, cards, files, and approvals do not depend on lark-cli. Profile commands remain available for exporting, switching, or safely cleaning local configuration.
-
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for test layers and release steps.
-
-## Compatibility and limitations
-
-- macOS is locally tested. Windows support is a preview until its Desktop discovery, App Server startup, QR flow, task continuation, approvals, and IPC path have completed real-device validation.
-- Codex App Server is the primary integration. Desktop IPC is best-effort and can be disabled with `CODEX_LARK_DESKTOP_IPC=0`.
-- A newer Desktop release can change its private IPC behavior. App Server behavior follows the documented protocol, but bundled versions can still differ.
-- The bridge computer must remain running and have network access to OpenAI and Feishu/Lark.
-- This project is not affiliated with or endorsed by OpenAI, Feishu, ByteDance, or Remodex.
-
-## License and provenance
-
-The project is MIT licensed. Portions adapted from Lark Channel Bridge remain under MIT; the vendored Desktop IPC modules adapted from Remodex remain under Apache-2.0. See [NOTICE](NOTICE), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and [LICENSES/Apache-2.0.txt](LICENSES/Apache-2.0.txt).
-
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- [Lark Channel Bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge)
+- [Remodex](https://github.com/Emanuele-web04/remodex)

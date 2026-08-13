@@ -128,7 +128,7 @@ export class CodexAppServerClient extends EventEmitter {
     });
 
     await this.request('initialize', {
-      clientInfo: { name: 'codex_lark', title: 'codex-lark', version: '0.2.0' },
+      clientInfo: { name: 'codex_lark', title: 'codex-lark', version: '0.2.1' },
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,

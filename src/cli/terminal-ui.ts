@@ -1,4 +1,5 @@
 import * as p from '@clack/prompts';
+import pkg from '../../package.json';
 import type { RegistrationProgress } from '../bot/wizard';
 
 export type TerminalPhase = 'loading' | 'checking' | 'connecting' | 'online';
@@ -27,10 +28,10 @@ export class TerminalUi {
 
   start(): void {
     if (!this.interactive) {
-      console.log('Codex Lark 正在启动');
+      console.log(`${terminalTitle()} 正在启动`);
       return;
     }
-    p.intro('Codex Lark · 飞书遥控 Codex Desktop');
+    p.intro(`${terminalTitle()} · 飞书遥控 Codex Desktop`);
     this.startSpinner('正在读取本机配置…');
   }
 
@@ -82,6 +83,10 @@ export class TerminalUi {
     this.activity.stop(message);
     this.spinning = false;
   }
+}
+
+export function terminalTitle(version = pkg.version): string {
+  return `Codex Lark v${version}`;
 }
 
 function phaseLabel(phase: TerminalPhase): string {

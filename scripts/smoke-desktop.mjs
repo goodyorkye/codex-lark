@@ -50,7 +50,7 @@ function request(method, params = {}) {
 
 try {
   await request('initialize', {
-    clientInfo: { name: 'codex_lark_smoke', title: 'codex-lark smoke', version: '0.2.0' },
+    clientInfo: { name: 'codex_lark_smoke', title: 'codex-lark smoke', version: '0.2.1' },
     capabilities: { experimentalApi: true },
   });
   child.stdin.write(`${JSON.stringify({ method: 'initialized', params: {} })}\n`);
