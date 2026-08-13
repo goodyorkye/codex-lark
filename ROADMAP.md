@@ -8,6 +8,7 @@ This roadmap describes direction, not a delivery promise.
 - QR-created Feishu/Lark PersonalAgent
 - foreground npm/npx launcher with terminal QR and status
 - automated protocol and transport regressions
+- macOS support and preview Windows Desktop integration
 
 ## 0.2 — low-friction daily use
 
@@ -18,6 +19,7 @@ This roadmap describes direction, not a delivery promise.
 ## 0.3 — compatibility confidence
 
 - Desktop/App Server compatibility matrix
+- real-device Windows compatibility matrix
 - recorded protocol fixtures across Desktop releases
 - graceful IPC capability negotiation
 - import/export UI with secret-safe defaults

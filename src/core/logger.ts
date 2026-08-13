@@ -319,8 +319,8 @@ function formatStdout(
       const bot = fields.bot ?? '-';
       const appId = fields.appId ? ` (${fields.appId})` : '';
       const agent = fields.agent ?? '-';
-      const proc = fields.procId ? `  进程: ${fields.procId}` : '';
-      return `✓ 已连接  bot: ${bot}${appId}  agent: ${agent}${proc}`;
+      const pid = typeof fields.pid === 'number' ? `  PID: ${fields.pid}` : '';
+      return `✓ 已连接  bot: ${bot}${appId}  agent: ${agent}${pid}`;
     }
     if (event === 'reconnecting') return '↻ 正在重连…';
     if (event === 'reconnected') return '✓ 已重连';

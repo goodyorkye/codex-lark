@@ -77,6 +77,7 @@ describe('Desktop IPC action follower transport', () => {
 
   it('falls back to the local app-server when a resumed task only has a stale IPC socket', async () => {
     vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const socket = new FakeSocket();
     const forwarded: string[] = [];
     const responses: string[] = [];
@@ -110,7 +111,9 @@ describe('Desktop IPC action follower transport', () => {
 
     expect(forwarded).toEqual([startTurn]);
     expect(responses).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
     follower.stopAll();
+    warn.mockRestore();
     vi.useRealTimers();
   });
 });

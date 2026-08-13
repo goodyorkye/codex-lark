@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   closeLogger,
   configureLogger,
@@ -19,8 +19,26 @@ const cleanups: Array<() => Promise<void>> = [];
 
 describe('profile logger observability', () => {
   afterEach(async () => {
+    vi.restoreAllMocks();
     await closeLogger();
     await Promise.all(cleanups.splice(0).map((cleanup) => cleanup()));
+  });
+
+  it('prints the operating-system PID in decimal for a connected bridge', () => {
+    configureLogger({ logsDir: undefined });
+    const stdout = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    log.info('ws', 'connected', {
+      bot: 'Codex1',
+      appId: 'cli_test',
+      agent: 'Codex Desktop (codex)',
+      pid: 72378,
+      procId: 'ab3f',
+    });
+
+    const line = String(stdout.mock.calls[0]?.[0]);
+    expect(line).toContain('PID: 72378');
+    expect(line).not.toContain('进程: ab3f');
   });
 
   it('writes profile-local bridge JSONL logs with a 30 day default retention', async () => {

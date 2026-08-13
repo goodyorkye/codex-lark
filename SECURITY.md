@@ -15,7 +15,7 @@ Maintainers should acknowledge reports within 7 days and publish a remediation t
 - Approval requests are shown to the user and are never automatically accepted by the bridge.
 - App Secrets are encrypted at rest and are never rendered in terminal status output or the QR code.
 - Logs are local and sanitized. Raw task content must not be added to telemetry.
-- Desktop IPC uses a local Unix socket. Any process running as the same macOS user may share that trust boundary; do not run untrusted software under the same account.
+- Desktop IPC uses a local Unix socket on macOS and a named pipe on Windows. Any process running as the same operating-system user may share that trust boundary; do not run untrusted software under the same account.
 
 ## Supported versions
 

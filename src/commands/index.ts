@@ -59,6 +59,7 @@ import {
 import { setSecret } from '../config/keystore';
 import { buildEncryptedAccountConfig, saveConfig } from '../config/store';
 import { log, reportMetric } from '../core/logger';
+import { requestProcessTermination } from '../runtime/process-control';
 import { markApprovalSubmitting, renderCard } from '../card/run-renderer';
 import {
   codexRemoteHelpCard,
@@ -291,7 +292,7 @@ export async function runCommandHandler(
   } catch (err) {
     log.fail('command', err, { cmd: name });
     reportMetric('command_fail', 1, { step: 'handler' });
-    await reply(ctx, '操作失败，请稍后重试；如果持续失败，请在 Mac 上重新打开 Codex Lark。');
+    await reply(ctx, '操作失败，请稍后重试；如果持续失败，请在电脑上重新打开 Codex Lark。');
   }
   return true;
 }
@@ -1471,12 +1472,12 @@ async function handleExit(args: string, ctx: CommandContext): Promise<void> {
     return;
   }
 
-  // Targeting another process — SIGTERM and report back. We can't easily
+  // Targeting another process — request a platform-native stop and report back. We can't easily
   // wait for it to die without blocking the command handler; trust the
   // target's own signal handler to unregister + exit.
   log.info('command', 'exit-other', { id: entry.id, pid: entry.pid });
   try {
-    process.kill(entry.pid, 'SIGTERM');
+    await requestProcessTermination(entry.pid);
   } catch (err) {
     await reply(ctx, `❌ 关掉 bot \`${entry.id}\` 失败:${(err as Error).message}`);
     return;

@@ -1958,7 +1958,6 @@ function createDesktopIpcActionFollower({
         }));
       })
       .catch((error) => {
-        console.warn(`${logPrefix} desktop follower request failed: ${error.message}`);
         // Only rerun the request locally when we know Desktop never received it.
         // Timeouts and explicit remote errors stay errors: the turn may already be
         // running on Desktop, and executing it again locally would duplicate it.
@@ -1970,6 +1969,7 @@ function createDesktopIpcActionFollower({
           forwardToLocalCodex(JSON.stringify(originalMessage));
           return;
         }
+        console.warn(`${logPrefix} desktop follower request failed: ${error.message}`);
         sendApplicationResponse(JSON.stringify({
           id: originalMessage.id,
           error: {

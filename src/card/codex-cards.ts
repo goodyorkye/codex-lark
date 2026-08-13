@@ -141,7 +141,7 @@ export function projectsCard(
     '项目列表',
     (projects.length
       ? rows
-      : [{ tag: 'markdown', content: '还没有 Codex 项目。先在 Mac 的 Codex Desktop 中打开一个目录即可。' }])
+      : [{ tag: 'markdown', content: '还没有 Codex 项目。先在电脑的 Codex Desktop 中打开一个目录即可。' }])
       .concat([navigationActions('tasks.recent')]),
   );
 }

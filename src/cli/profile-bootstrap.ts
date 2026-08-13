@@ -76,7 +76,7 @@ export async function createBootstrapCodexConfig(binaryPath: string | undefined)
       code: 'agent-binary-not-found' as const,
       agentId: 'codex' as const,
       agentName: 'Codex Desktop',
-      command: command ?? 'ChatGPT.app/Contents/Resources/codex',
+      command: command ?? 'Codex Desktop bundled core',
       ...(command ? { binaryPath: command } : {}),
     };
     throw new AgentPreflightError(

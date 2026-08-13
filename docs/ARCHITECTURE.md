@@ -2,7 +2,7 @@
 
 ## Outcome
 
-`codex-lark` is a local bridge. Feishu/Lark is the phone UI; Codex Desktop remains the installation, authentication, task-store, and execution owner on the Mac.
+`codex-lark` is a local bridge. Feishu/Lark is the phone UI; Codex Desktop remains the installation, authentication, task-store, and execution owner on the local Mac or Windows PC.
 
 ```text
 Feishu/Lark phone
@@ -19,16 +19,18 @@ codex-lark runtime ─── local encrypted state (~/.codex-lark)
       │                     ├── models
       │                     └── approvals
       │
-      └── optional Unix socket ── Codex Desktop IPC
-                                  ├── mirror Desktop-owned live tasks
-                                  └── expose bridge-owned live tasks
+      └── optional local IPC ── Codex Desktop IPC
+                                ├── Unix socket on macOS
+                                ├── named pipe on Windows
+                                ├── mirror Desktop-owned live tasks
+                                └── expose bridge-owned live tasks
 ```
 
 ## Components
 
 ### Desktop discovery
 
-`src/codex/desktop-binary.ts` checks fixed macOS application bundle locations and an explicit development override. It intentionally ignores `PATH` so an unrelated or stale Codex CLI cannot change behavior.
+`src/codex/desktop-binary.ts` checks fixed macOS application bundle locations or resolves the signed `OpenAI.Codex` package installed for the current Windows user. Since Windows may deny direct `CreateProcess` calls inside `WindowsApps`, the Desktop-owned core and known helper executables are materialized into a versioned per-user runtime cache before launch. An explicit binary override exists for tests and development. Production discovery intentionally ignores `PATH` so an unrelated or stale Codex CLI cannot change behavior.
 
 ### App Server client
 

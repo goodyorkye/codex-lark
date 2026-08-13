@@ -1,26 +1,26 @@
 # codex-lark
 
-用手机飞书/Lark 控制 Mac 上的 Codex Desktop 任务：不单独安装 Codex CLI，不开放公网 Web 服务，也不用手工进入飞书开发者后台创建机器人。
+用手机飞书/Lark 控制 Mac 或 Windows 电脑上的 Codex Desktop 任务：不单独安装 Codex CLI，不开放公网 Web 服务，也不用手工进入飞书开发者后台创建机器人。
 
 [English](README.md) · [配置与本地数据](docs/CONFIGURATION.md) · [架构](docs/ARCHITECTURE.md) · [安全](SECURITY.md) · [路线图](ROADMAP.md)
 
-> 当前状态：macOS 早期预览版。App Server 主链路有自动化测试；Desktop IPC 镜像属于实验能力，因为它不是公开文档承诺的稳定接口。
+> 当前状态：早期预览版。macOS 已在本机验证；Windows 已纳入跨平台自动化测试，还需要更多真机验证。Desktop IPC 镜像仍属于实验能力，因为它不是公开文档承诺的稳定接口。
 
 ## 能做什么
 
-- 自动找到 `ChatGPT.app` 或 `Codex.app` 内置的 Codex 核心，绝不会退回去调用 `PATH` 里的 `codex` 命令。
+- 自动找到 macOS `ChatGPT.app`/`Codex.app` 或 Windows 官方 `OpenAI.Codex` Microsoft Store 安装包内置的 Codex 核心，绝不会退回去调用 `PATH` 里的 `codex` 命令。
 - 读取 Codex 项目、任务列表、完整会话记录和当前可用模型。
 - 从飞书新建任务、继续已有任务，并把文字、推理摘要、工具活动、用量和结果流式显示在卡片中。
-- 支持图片和飞书附件；文件下载到 Mac 的隔离缓存后作为本地输入交给 Codex。
+- 支持图片和飞书附件；文件下载到电脑的隔离缓存后作为本地输入交给 Codex。
 - 把命令执行、文件修改和权限申请显示为带签名的审批按钮。
-- 可通过本机 Desktop IPC 同步 Mac 界面里已经开始的任务；这部分综合了 Remodex 的相关实现。
+- 可通过本机 Desktop IPC 同步电脑界面里已经开始的任务；这部分综合了 Remodex 的相关实现。
 - 使用 `@larksuite/channel` 扫码创建 PersonalAgent，无需手工配置应用、权限和长连接。
 
 App Server 部分遵循 [OpenAI 官方 Codex App Server 文档](https://developers.openai.com/codex/app-server/)：stdio JSONL、初始化、线程、回合、模型、流式通知和服务端审批请求。
 
 ## 最省心的使用方式
 
-需要 macOS 13+、Node.js 20.12+，以及已经登录的官方 ChatGPT 或 Codex Desktop。
+需要 Node.js 20.12+ 和已登录的官方桌面应用：macOS 13+ 上的 ChatGPT/Codex Desktop，或从 Microsoft Store 安装的 Windows Codex Desktop。
 
 直接运行，无需安装：
 
@@ -37,7 +37,7 @@ npm install -g codex-lark
 codex-lark
 ```
 
-当前只提供前台运行模式，关闭终端就会停止桥接；暂不注册 launchd 等系统后台服务。
+当前只提供前台运行模式，关闭终端就会停止桥接；暂不注册系统后台服务。
 
 ## 手机端命令
 
@@ -72,11 +72,13 @@ codex-lark
 
 ## “不安装 CLI”到底如何实现
 
-`codex-lark` 会启动一个本机 App Server 进程，但可执行文件直接来自官方桌面应用：
+`codex-lark` 会启动一个本机 App Server 进程，但可执行文件直接来自官方桌面应用。在 macOS 上类似：
 
 ```text
 /Applications/ChatGPT.app/Contents/Resources/codex app-server --listen stdio://
 ```
+
+Windows 上则会在已安装的 `OpenAI.Codex` 包内解析对应的 `codex.exe`。由于 Windows 可能禁止直接启动 `WindowsApps` 中的内部进程，程序会先把已签名的 Desktop 核心和必要辅助文件复制到 `~/.codex-lark/runtime/` 下的按版本隔离缓存再启动。它们仍然来自已安装的 Desktop，程序不会下载或搜索独立 CLI。两个平台都不会搜索 `PATH`。
 
 它不是用户另行安装的 Codex CLI。安装、更新、本地任务存储和 ChatGPT 登录都由 Desktop 管理。当前桌面版本支持时，可选的本机 IPC 跟随器还会把 Desktop 中开始的任务投影给手机，并把手机开始的任务同步回 Desktop。
 
@@ -98,11 +100,11 @@ codex-lark
 旧版 `sandbox` 仅用于迁移兼容，不建议继续配置。扫码者会被解析为应用 owner 和初始管理员，其他访问名单默认关闭。Secret 使用本机密钥库派生密钥加密保存；日志会脱敏凭据、资源 ID、提示内容和本机路径。
 飞书/Lark App Secret 只保留在本机桥接进程及加密配置中，终端二维码不会输出它。
 
-共享 Mac 上使用前，请阅读 [docs/PRIVACY.md](docs/PRIVACY.md) 和 [SECURITY.md](SECURITY.md)。
+共享电脑上使用前，请阅读 [docs/PRIVACY.md](docs/PRIVACY.md) 和 [SECURITY.md](SECURITY.md)。
 
 ## 开发
 
-需要 macOS 13+、Node.js 22、pnpm；真实集成测试还需要已安装的 ChatGPT/Codex Desktop。
+需要 Node.js 22 和 pnpm。真实集成测试还需要 macOS 13+ 上的 ChatGPT/Codex Desktop，或 Windows 上的 Microsoft Store Codex Desktop。
 
 ```bash
 corepack enable
@@ -135,10 +137,10 @@ codex-lark profile export codex --include-secrets --yes
 
 ## 限制
 
-- `0.1.x` 的最终用户平台是 macOS。
+- macOS 已本机验证。Windows 暂属预览支持，还需在真机上完成 Desktop 发现、App Server 启动、扫码、续接任务、审批和 IPC 链路的完整验证。
 - App Server 是主集成；Desktop IPC 是尽力而为的实验能力，可用 `CODEX_LARK_DESKTOP_IPC=0` 关闭。
 - Desktop 的私有 IPC 可能随版本变化；App Server 按公开协议实现，但桌面内置版本之间也可能存在差异。
-- Mac 必须保持运行，并且能访问 OpenAI 和飞书/Lark 网络。
+- 桥接所在电脑必须保持运行，并且能访问 OpenAI 和飞书/Lark 网络。
 - 本项目不隶属于 OpenAI、飞书、字节跳动或 Remodex，也未获得这些项目的官方背书。
 
 ## 许可证与来源

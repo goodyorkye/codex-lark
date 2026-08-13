@@ -161,6 +161,15 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       reasoningEffort: 'high',
     });
     expect(requests.find((message) => message.method === 'turn/start')?.params).not.toHaveProperty('additionalContext');
+    expect(requests.find((message) => message.method === 'thread/unsubscribe')?.params).toEqual({
+      threadId: 'thread-1',
+    });
+    await adapter.readThread('thread-1');
+    const requestsAfterRestart = (await readFile(requestLog, 'utf8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    expect(requestsAfterRestart.filter((message) => message.method === 'initialize')).toHaveLength(2);
     await adapter.shutdown();
   });
 
@@ -222,6 +231,7 @@ rl.on('line', (line) => {
     return;
   }
   if (message.method === 'turn/interrupt') return send({ id: message.id, result: {} });
+  if (message.method === 'thread/unsubscribe') return send({ id: message.id, result: { status: 'unsubscribed' } });
 });
 `;
   await writeFile(binary, script);

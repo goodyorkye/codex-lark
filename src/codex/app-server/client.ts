@@ -12,6 +12,7 @@ import type {
 import { rpcIdKey } from './protocol';
 import remodexLiveOwner from '../../vendor/remodex-ipc/desktop-ipc-live-owner.cjs';
 import remodexActionFollower from '../../vendor/remodex-ipc/desktop-ipc-action-follower.cjs';
+import { requestProcessTermination } from '../../runtime/process-control';
 
 interface PendingRequest {
   resolve(value: unknown): void;
@@ -127,7 +128,7 @@ export class CodexAppServerClient extends EventEmitter {
     });
 
     await this.request('initialize', {
-      clientInfo: { name: 'codex_lark', title: 'codex-lark', version: '0.1.0' },
+      clientInfo: { name: 'codex_lark', title: 'codex-lark', version: '0.2.0' },
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,
@@ -275,6 +276,10 @@ export class CodexAppServerClient extends EventEmitter {
     await this.request('turn/interrupt', { threadId, turnId });
   }
 
+  async unsubscribeThread(threadId: string): Promise<void> {
+    await this.request('thread/unsubscribe', { threadId });
+  }
+
   async listModels(): Promise<CodexModel[]> {
     const result = await this.request<{ data: CodexModel[] }>('model/list', {
       limit: 100,
@@ -319,10 +324,20 @@ export class CodexAppServerClient extends EventEmitter {
     this.child = undefined;
     this.startPromise = undefined;
     if (!child || child.exitCode !== null || child.signalCode !== null) return;
-    child.kill('SIGTERM');
+    if (child.pid) {
+      await requestProcessTermination(child.pid).catch(() => child.kill('SIGTERM'));
+    } else {
+      child.kill('SIGTERM');
+    }
     await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      const timeout = setTimeout(async () => {
+        if (child.exitCode === null && child.signalCode === null) {
+          if (child.pid) {
+            await requestProcessTermination(child.pid, true).catch(() => child.kill('SIGKILL'));
+          } else {
+            child.kill('SIGKILL');
+          }
+        }
         resolve();
       }, 3_000);
       child.once('close', () => {

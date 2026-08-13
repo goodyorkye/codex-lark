@@ -12,7 +12,11 @@ import type {
   JsonRpcMessage,
 } from '../../codex/app-server/protocol';
 import { rpcIdKey } from '../../codex/app-server/protocol';
-import { discoverDesktopBinary, type DesktopBinaryLocation } from '../../codex/desktop-binary';
+import {
+  discoverDesktopBinary,
+  resolveDesktopBinaryForLaunch,
+  type DesktopBinaryLocation,
+} from '../../codex/desktop-binary';
 import { activateDesktopThread } from '../../codex/desktop-route';
 import { projectAgentPromptForCodex } from '../prompt';
 import { normalizeSessionPreview } from '../../session/preview';
@@ -39,10 +43,14 @@ export class CodexAppServerAdapter implements AgentAdapter {
   private binary: DesktopBinaryLocation | undefined;
   private readonly approvalIds = new Map<string, JsonRpcId>();
   private readonly approvalTokensByRequest = new Map<string, string>();
+  private activeRuns = 0;
+  private clientStopPromise: Promise<void> | undefined;
+  private readonly ownsClient: boolean;
 
   constructor(options: CodexAppServerAdapterOptions = {}) {
     this.options = options;
     this.client = options.client;
+    this.ownsClient = !options.client;
   }
 
   async isAvailable(): Promise<boolean> {
@@ -58,7 +66,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
         code: 'agent-binary-not-found' as const,
         agentId: 'codex' as const,
         agentName: 'Codex Desktop',
-        command: 'ChatGPT.app/Contents/Resources/codex app-server',
+        command: 'Codex Desktop bundled core app-server',
         ...(this.options.binaryPath ? { binaryPath: this.options.binaryPath } : {}),
       };
       return {
@@ -81,12 +89,30 @@ export class CodexAppServerAdapter implements AgentAdapter {
     const queue = new AsyncEventQueue<AgentEvent>();
     let active: ActiveTurn | undefined;
     let stopped = false;
+    let runClient: CodexAppServerClient | undefined;
+    let releasePromise: Promise<void> | undefined;
+    this.activeRuns += 1;
+
+    const release = (): Promise<void> => {
+      releasePromise ??= (async () => {
+        if (runClient && active?.threadId) {
+          await runClient.unsubscribeThread(active.threadId).catch(() => {});
+        }
+        await this.releaseRunClient(runClient);
+      })();
+      return releasePromise;
+    };
 
     const execute = async (): Promise<void> => {
       try {
         const client = await this.ensureClient();
+        runClient = client;
         await client.start();
-        if (stopped) return;
+        if (stopped) {
+          await release();
+          queue.end();
+          return;
+        }
 
         const projection = projectAgentPromptForCodex(options.prompt);
         const replaceLegacyThread = options.threadId
@@ -148,7 +174,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           if (message.method === 'turn/completed') {
             client.off('message', onMessage);
             client.off('approval', onApproval);
-            queue.end();
+            void release().finally(() => queue.end());
           }
         };
         const onApproval = (approval: ApprovalRequest): void => {
@@ -190,6 +216,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           client.off('message', onMessage);
           client.off('approval', onApproval);
           queue.push({ type: 'done', threadId: active.threadId, terminationReason: 'interrupted' });
+          await release();
           queue.end();
         }
       } catch (error) {
@@ -198,6 +225,7 @@ export class CodexAppServerAdapter implements AgentAdapter {
           message: friendlyError(error),
           terminationReason: stopped ? 'interrupted' : 'failed',
         });
+        await release();
         queue.end();
       }
     };
@@ -250,19 +278,42 @@ export class CodexAppServerAdapter implements AgentAdapter {
   }
 
   async shutdown(): Promise<void> {
+    if (this.clientStopPromise) await this.clientStopPromise.catch(() => {});
     await this.client?.stop();
+    this.client = undefined;
   }
 
   private async ensureClient(): Promise<CodexAppServerClient> {
+    if (this.clientStopPromise) await this.clientStopPromise;
     if (this.client) return this.client;
-    this.binary = this.options.binaryPath
-      ? { binaryPath: this.options.binaryPath, appPath: '', appName: 'custom' }
+    this.binary ??= this.options.binaryPath
+      ? {
+          binaryPath: await resolveDesktopBinaryForLaunch(this.options.binaryPath, {
+            env: this.options.env,
+          }),
+          appPath: '',
+          appName: 'custom',
+        }
       : await (this.options.discoverBinary ?? discoverDesktopBinary)();
     this.client = new CodexAppServerClient({
       binaryPath: this.binary.binaryPath,
       env: this.options.env,
     });
     return this.client;
+  }
+
+  private async releaseRunClient(client: CodexAppServerClient | undefined): Promise<void> {
+    this.activeRuns = Math.max(0, this.activeRuns - 1);
+    if (!this.ownsClient || this.activeRuns > 0 || !client || this.client !== client) return;
+
+    const stopPromise = client.stop();
+    this.clientStopPromise = stopPromise;
+    try {
+      await stopPromise;
+    } finally {
+      if (this.client === client) this.client = undefined;
+      if (this.clientStopPromise === stopPromise) this.clientStopPromise = undefined;
+    }
   }
 }
 
@@ -457,7 +508,7 @@ function numberValue(value: unknown): number | undefined {
 function friendlyError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/auth|login|unauthorized|401/i.test(message)) {
-    return 'ChatGPT/Codex Desktop 尚未登录或登录已失效。请在 Mac 桌面应用中完成登录后重试。';
+    return 'ChatGPT/Codex Desktop 尚未登录或登录已失效。请在电脑端桌面应用中完成登录后重试。';
   }
   return message;
 }

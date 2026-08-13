@@ -49,7 +49,7 @@ export class TerminalUi {
     this.stopSpinner(message);
     p.note(
       [
-        '飞书消息会直接续接 Mac 上的 Codex 任务',
+        '飞书消息会直接续接电脑上的 Codex 任务',
         '保持这个终端窗口打开',
         '按 Ctrl+C 停止',
       ].join('\n'),

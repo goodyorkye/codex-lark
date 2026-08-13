@@ -6,6 +6,7 @@ import {
   spawnProcess,
   type SpawnedProcessByStdio,
 } from '../platform/spawn';
+import { resolveDesktopBinaryForLaunch } from '../codex/desktop-binary';
 import { normalizeSessionPreview } from './preview';
 
 type CodexAppServerChild = SpawnedProcessByStdio<Writable, Readable, Readable>;
@@ -68,7 +69,8 @@ const DEFAULT_SOURCE_KINDS: readonly CodexThreadSourceKind[] = [
 export async function listCodexThreadHistory(
   options: ListCodexThreadHistoryOptions,
 ): Promise<CodexThreadHistoryEntry[]> {
-  const child = spawnCodexAppServer(options);
+  const binary = await resolveDesktopBinaryForLaunch(options.binary);
+  const child = spawnCodexAppServer({ ...options, binary });
   const timeoutMs = options.timeoutMs ?? DEFAULT_HISTORY_TIMEOUT_MS;
   const stderrChunks: Buffer[] = [];
   let settled = false;

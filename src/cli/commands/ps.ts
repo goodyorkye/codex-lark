@@ -1,5 +1,6 @@
 import { readAndPrune, resolveTarget, isAlive } from '../../runtime/registry';
 import type { ProcessEntry } from '../../runtime/registry';
+import { requestProcessTermination } from '../../runtime/process-control';
 
 /**
  * Pretty-print the list of running lark-channel-bridge processes.
@@ -64,7 +65,13 @@ export async function stopProcessEntry(
   entry: Pick<ProcessEntry, 'pid'> & { id?: string },
   timeoutMs = 2000,
 ): Promise<StopProcessEntryResult> {
-  process.kill(entry.pid, 'SIGTERM');
+  let gracefulError: unknown;
+  try {
+    await requestProcessTermination(entry.pid);
+  } catch (error) {
+    gracefulError = error;
+    if (!isAlive(entry.pid)) return 'terminated';
+  }
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -74,7 +81,15 @@ export async function stopProcessEntry(
     await new Promise((r) => setTimeout(r, 100));
   }
 
-  process.kill(entry.pid, 'SIGKILL');
+  try {
+    await requestProcessTermination(entry.pid, true);
+  } catch (error) {
+    if (!isAlive(entry.pid)) return 'killed';
+    const gracefulDetail = gracefulError instanceof Error
+      ? `; graceful stop also failed: ${gracefulError.message}`
+      : '';
+    throw new Error(`${error instanceof Error ? error.message : String(error)}${gracefulDetail}`);
+  }
   const forceDeadline = Date.now() + timeoutMs;
   while (Date.now() < forceDeadline) {
     if (!isAlive(entry.pid)) {
@@ -82,7 +97,7 @@ export async function stopProcessEntry(
     }
     await new Promise((r) => setTimeout(r, 100));
   }
-  throw new Error(`process ${entry.pid} did not exit after SIGKILL`);
+  throw new Error(`process ${entry.pid} did not exit after forced termination`);
 }
 
 function formatAgo(ms: number): string {

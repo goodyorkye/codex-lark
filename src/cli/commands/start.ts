@@ -46,6 +46,10 @@ import { SessionStore } from '../../session/store';
 import { SessionCatalog } from '../../session/catalog';
 import { WorkspaceStore } from '../../workspace/store';
 import type { RegistrationProgress } from '../../bot/wizard';
+import {
+  installForegroundShutdownInput,
+  type ForegroundShutdownInput,
+} from '../shutdown-input';
 
 // Prefer IPv4 — Node 20+ defaults to "verbatim" which respects whatever
 // the resolver returns first; in IPv6-broken networks (WSL2, certain VPNs,
@@ -187,21 +191,41 @@ export async function runStart(opts: StartOptions): Promise<void> {
         // and replace credentials without plumbing through the whole runStart scope.
         let bridge: BridgeChannel;
         let restarting = false;
+        let shutdownInput: ForegroundShutdownInput | undefined;
 
         let stopping = false;
+        let forcedExitStarted = false;
+        const forceExit = (sig: string): void => {
+          if (forcedExitStarted) return;
+          forcedExitStarted = true;
+          shutdownInput?.dispose();
+          console.error(`\n${sig} 关闭超时，已强制退出。`);
+          unregisterSync(entry.id, appPaths.userRegistryFile);
+          cleanupTmpFiles(appPaths.userRegistryFile);
+          process.exit(sig === 'SIGINT' || sig === 'Ctrl+C' ? 130 : 143);
+        };
         const stop = async (sig: string): Promise<void> => {
-          if (stopping) return;
+          if (stopping) {
+            forceExit(sig);
+            return;
+          }
           stopping = true;
-          console.log(`\n收到 ${sig}，正在关闭...`);
+          shutdownInput?.restoreInputMode();
+          console.log(`\n收到 ${sig}，正在关闭……再按一次 Ctrl+C 可立即强制退出。`);
+          const watchdog = setTimeout(() => forceExit(sig), 8_000);
+          watchdog.unref();
           try {
-            await bridge.disconnect();
+            await withTimeout(bridge.disconnect(), 5_000, 'bridge disconnect');
           } catch (err) {
             console.error('[disconnect-failed]', err);
           }
           // unregister is best-effort sync — we're about to exit anyway.
           unregisterSync(entry.id, appPaths.userRegistryFile);
           await releaseRuntimeLocks(runtimeLocks);
-          await flushTelemetry();
+          await withTimeout(flushTelemetry(), 1_000, 'telemetry flush')
+            .catch((err) => console.error('[telemetry-flush-failed]', err));
+          clearTimeout(watchdog);
+          shutdownInput?.dispose();
           process.exit(0);
         };
 
@@ -349,8 +373,7 @@ export async function runStart(opts: StartOptions): Promise<void> {
         }
         opts.onStatus?.('online', botName ? `${botName} 已在线` : '飞书助手已在线');
 
-        process.on('SIGINT', () => void stop('SIGINT'));
-        process.on('SIGTERM', () => void stop('SIGTERM'));
+        shutdownInput = installForegroundShutdownInput((signal) => void stop(signal));
         process.on('beforeExit', () => {
           void flushTelemetry();
         });
@@ -372,6 +395,21 @@ export async function runStart(opts: StartOptions): Promise<void> {
       if (action === 'cancel') return;
       throw err;
     }
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+        timer.unref();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -450,7 +488,7 @@ async function resolveConflict(conflicts: ProcessEntry[]): Promise<boolean> {
     const ago = formatAgo(Date.now() - new Date(e.startedAt).getTime());
     // botName 只在 WS 连上后才回填,刚启动 / 连接失败的旧 entry 可能没有。
     const label = e.botName ? `bot ${e.botName} (${e.appId})` : `bot ${e.appId}`;
-    console.log(`   - ${label},进程 ${e.id},${ago}启动`);
+    console.log(`   - ${label},bot ID ${e.id},PID ${e.pid},${ago}启动`);
   }
   console.log('');
 
@@ -473,7 +511,7 @@ async function resolveConflict(conflicts: ProcessEntry[]): Promise<boolean> {
     }
     for (const e of conflicts) {
       try {
-        process.kill(e.pid, 'SIGTERM');
+        await stopProcessEntry(e);
         console.log(`✓ 已关掉 bot ${e.id}`);
       } catch (err) {
         console.warn(`✗ 关掉 bot ${e.id} 失败:${(err as Error).message}`);

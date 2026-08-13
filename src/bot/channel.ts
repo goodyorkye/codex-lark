@@ -425,6 +425,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
     openId: identity?.openId ?? '-',
     agent: `${agent.displayName} (${agent.id})`,
     appId: cfg.accounts.app.id,
+    pid: process.pid,
     procId: controls.processId,
   });
   pushConnectionNavigation();

@@ -4,7 +4,7 @@
 
 - Node.js 22
 - pnpm 10
-- macOS 13+ for Desktop integration
+- macOS 13+ or Windows with the official Desktop app for real integration
 
 ## Checks
 
@@ -31,14 +31,14 @@ pnpm smoke:app-server
 
 ## npm package
 
-`pnpm build` creates the foreground CLI and public library output under `dist/`. Use `npm pack --dry-run` to inspect the exact publish surface. The published package must not include local profiles, media, logs, Desktop credentials, or generated macOS application bundles.
+`pnpm build` creates the foreground CLI and public library output under `dist/`. Use `npm pack --dry-run` to inspect the exact publish surface. The published package must not include local profiles, media, logs, Desktop credentials, or generated application bundles.
 
 ## Release checklist
 
 - Update `CHANGELOG.md` and the package version.
-- Run all checks on macOS, Linux, and Windows; Desktop-only tests may skip off macOS.
-- Run a read-only smoke check on the oldest and newest supported Desktop versions.
+- Run all checks on macOS, Linux, and Windows; Desktop-only tests may skip when the official app is unavailable.
+- Run a read-only smoke check on the oldest and newest supported Desktop versions on both end-user platforms.
 - Run dependency and license audits.
 - Pack on a clean runner and inspect the tarball contents.
 - Test both `npx codex-lark` first-run QR registration and an already-configured restart.
-- Create and push a `v*` Git tag matching the package version only after those checks pass. The `release.yml` workflow publishes to npm through Trusted Publishing (OIDC), attaches the tarball and checksum to a GitHub prerelease, and stores no npm token in GitHub.
+- Create and push a `v*` Git tag matching the package version only after those checks pass. The `release.yml` workflow publishes to npm through Trusted Publishing (OIDC), attaches the tarball and checksum to a GitHub release, and stores no npm token in GitHub.
