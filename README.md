@@ -1,5 +1,13 @@
 # codex-lark
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/codex-lark"><img alt="npm 版本" src="https://img.shields.io/npm/v/codex-lark?label=npm%20%E7%89%88%E6%9C%AC&logo=npm"></a>
+  <a href="https://www.npmjs.com/package/codex-lark"><img alt="npm 下载" src="https://img.shields.io/npm/dm/codex-lark?label=npm%20%E4%B8%8B%E8%BD%BD&logo=npm"></a>
+  <a href="LICENSE"><img alt="许可证" src="https://img.shields.io/github/license/goodyorkye/codex-lark?label=%E8%AE%B8%E5%8F%AF%E8%AF%81"></a>
+  <a href="https://github.com/goodyorkye/codex-lark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/goodyorkye/codex-lark/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/node/v/codex-lark?label=Node.js"></a>
+</p>
+
 **用手机飞书，随时继续电脑上的 Codex Desktop 任务。**
 
 你不需要在手机上运行另一个 Agent，也不用重新描述工作背景。`codex-lark` 把电脑中已有的项目和任务带到飞书，让你离开电脑后仍能接着处理，回到电脑时又可以继续使用同一个任务。

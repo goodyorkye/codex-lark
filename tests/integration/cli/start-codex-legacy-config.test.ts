@@ -85,29 +85,34 @@ describe('Codex startup compatibility with legacy binary metadata', () => {
     expect(mocks.withProfileAndAppLocks).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a legacy executable that does not implement App Server', async () => {
-    const h = await createLegacyCodexConfig({
-      codexMetadata: staleLegacyMetadata(),
-    });
-    const root = await loadRootConfig(h.configPath);
-    const profile = root?.profiles.codex;
-    expect(profile).toBeDefined();
+  // The fixture is a POSIX shell script (`#!/bin/sh`). On Windows, spawning it
+  // yields ENOENT (no executable extension / no shell), so the "starts and stops
+  // without App Server" scenario is only reproducible on Unix-like platforms.
+  it.skipIf(process.platform === 'win32')(
+    'rejects a legacy executable that does not implement App Server',
+    async () => {
+      const h = await createLegacyCodexConfig({
+        codexMetadata: staleLegacyMetadata(),
+      });
+      const root = await loadRootConfig(h.configPath);
+      const profile = root?.profiles.codex;
+      expect(profile).toBeDefined();
 
-    const agent = createRuntimeAgent(profile!, {
-      profile: 'codex',
-      rootDir: h.root,
-      profileDir: join(h.root, 'profiles', 'codex'),
-      configPath: h.configPath,
-    });
+      const agent = createRuntimeAgent(profile!, {
+        profile: 'codex',
+        rootDir: h.root,
+        profileDir: join(h.root, 'profiles', 'codex'),
+        configPath: h.configPath,
+      });
 
-    await expect(
-      agent.prepareRun?.({
-        runId: 'run-1',
-        prompt: 'hello',
-        cwd: h.workspace,
-      }),
-    ).rejects.toThrow(/App Server stopped/);
-  });
+      await expect(
+        agent.prepareRun?.({
+          runId: 'run-1',
+          prompt: 'hello',
+          cwd: h.workspace,
+        }),
+      ).rejects.toThrow(/App Server stopped/);
+    });
 });
 
 async function createLegacyCodexConfig(options: {

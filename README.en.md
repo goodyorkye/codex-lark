@@ -1,5 +1,13 @@
 # codex-lark
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/codex-lark"><img alt="npm version" src="https://img.shields.io/npm/v/codex-lark?logo=npm"></a>
+  <a href="https://www.npmjs.com/package/codex-lark"><img alt="npm downloads" src="https://img.shields.io/npm/dm/codex-lark"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/goodyorkye/codex-lark"></a>
+  <a href="https://github.com/goodyorkye/codex-lark/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/goodyorkye/codex-lark/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/node/v/codex-lark"></a>
+</p>
+
 **Continue your Codex Desktop tasks from Feishu or Lark on your phone.**
 
 You do not start a second agent on your phone or explain the work again. `codex-lark` brings your existing Desktop projects and tasks into Feishu/Lark, so you can continue while away and return to the same task on your computer later.
