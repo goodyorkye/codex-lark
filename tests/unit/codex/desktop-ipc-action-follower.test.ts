@@ -1,8 +1,37 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 import remodexActionFollower from '../../../src/vendor/remodex-ipc/desktop-ipc-action-follower.cjs';
+import remodexShared from '../../../src/vendor/remodex-ipc/desktop-ipc-shared.cjs';
 
 describe('Desktop IPC action follower transport', () => {
+  it('uses the ChatGPT Desktop v2 follower turn-start envelope', () => {
+    expect(remodexShared.DESKTOP_IPC_METHOD_VERSIONS.get('thread-follower-start-turn')).toBe(2);
+    expect(remodexActionFollower.desktopFollowerStartTurnParamsForIpc({
+      conversationId: 'thread-desktop',
+      senderRequestId: 'number:42',
+      turnStartParams: {
+        threadId: 'thread-desktop',
+        input: [{ type: 'text', text: '继续' }],
+        model: 'gpt-5.6-terra',
+        effort: 'high',
+      },
+    })).toEqual({
+      conversationId: 'thread-desktop',
+      turnStart: {
+        request: {
+          threadId: 'thread-desktop',
+          input: [{ type: 'text', text: '继续' }],
+          model: 'gpt-5.6-terra',
+          effort: 'high',
+          clientUserMessageId: 'number:42',
+        },
+        context: {
+          inheritThreadSettings: true,
+        },
+      },
+    });
+  });
+
   it('preserves the numeric Desktop request id when replying to an approval', () => {
     expect(remodexActionFollower.desktopFollowerPayloadForResponse({
       requestId: '900',

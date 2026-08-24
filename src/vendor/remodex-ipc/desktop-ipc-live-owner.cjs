@@ -1368,7 +1368,9 @@ function createDesktopIpcLiveOwner({
   }
 
   async function handleFollowerStartTurn(conversationId, params) {
-    const rawTurnStartParams = params.turnStartParams
+    const rawTurnStartParams = params.turnStart?.request
+      || params.turn_start?.request
+      || params.turnStartParams
       || params.turn_start_params
       || params.turnStart
       || params;
@@ -1381,7 +1383,10 @@ function createDesktopIpcLiveOwner({
       ? normalizedParams
       : codexParams;
     markOwnedThread(conversationId);
-    const senderRequestId = params.senderRequestId || params.sender_request_id;
+    const senderRequestId = params.senderRequestId
+      || params.sender_request_id
+      || rawTurnStartParams.clientUserMessageId
+      || rawTurnStartParams.client_user_message_id;
     const isKnownHeldPhoneStart = Boolean(
       requestIdKey(senderRequestId)
       && pendingTurnStartEntriesByRequestId.has(requestIdKey(senderRequestId))
@@ -1920,6 +1925,8 @@ function readConversationIdFromFollowerParams(params) {
     || readString(params?.conversation_id)
     || readString(params?.threadId)
     || readString(params?.thread_id)
+    || readString(params?.turnStart?.request?.threadId)
+    || readString(params?.turn_start?.request?.threadId)
     || readString(params?.turnStartParams?.threadId)
     || readString(params?.turn_start_params?.threadId);
 }

@@ -29,7 +29,11 @@ const DESKTOP_IPC_METHOD_VERSIONS = new Map([
   ["thread-unarchived", 1],
   ["thread-read-state-changed", 2],
   ["thread-queued-followups-changed", 1],
-  ["thread-follower-start-turn", 1],
+  // ChatGPT Desktop 26.818 moved follower turn starts to the structured
+  // { turnStart: { request, context } } envelope and pins that shape at v2.
+  // Version mismatches are dropped by the Desktop router without a response,
+  // which otherwise looks like a healthy IPC connection followed by a timeout.
+  ["thread-follower-start-turn", 2],
   ["thread-follower-load-complete-history", 1],
   ["thread-follower-update-thread-settings", 1],
   ["thread-follower-compact-thread", 1],

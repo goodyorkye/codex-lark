@@ -1930,7 +1930,16 @@ function createDesktopIpcActionFollower({
       .then(async (resolvedParams) => {
         if (route.method === "thread-follower-start-turn") {
           try {
-            await syncDesktopOwnerRuntimeSettings(route.threadId, resolvedParams.turnStartParams);
+            // A retained Desktop snapshot is not proof that a renderer still
+            // owns the task. Verify ownership before sending the user turn: if
+            // the task was closed on Desktop, this read-only probe can fail
+            // safely and the untouched turn may continue on the local
+            // app-server without any duplicate-execution risk.
+            await ipc.sendRequest("thread-owner-discovery", {
+              hostId: "local",
+              conversationId: route.threadId,
+            }, { timeoutMs: ownershipProbeTimeoutMs });
+            await syncDesktopOwnerRuntimeSettings(route.threadId, resolvedParams.turnStart?.request);
           } catch (error) {
             // The actual turn has not reached Desktop yet. Even if the settings
             // request timed out after being applied, continuing through the local
@@ -1948,7 +1957,7 @@ function createDesktopIpcActionFollower({
         if (route.method === "thread-follower-start-turn") {
           commitPhoneRuntimeSettings(
             route.threadId,
-            resolvedParams.turnStartParams,
+            resolvedParams.turnStart?.request,
             readTurnIdFromAppServerResult(appServerResult)
           );
         }
@@ -2055,10 +2064,10 @@ function createDesktopIpcActionFollower({
     const turnStartParams = normalized && typeof normalized === "object" && !Array.isArray(normalized)
       ? normalized
       : route.params.turnStartParams;
-    return {
+    return desktopFollowerStartTurnParamsForIpc({
       ...route.params,
       turnStartParams,
-    };
+    });
   }
 
   function queueThreadChange(threadId, change) {
@@ -2301,7 +2310,7 @@ function createDesktopIpcClient({
     connectNextSocket();
   }
 
-  function sendRequest(method, params) {
+  function sendRequest(method, params, { timeoutMs = requestTimeoutMs } = {}) {
     ensureConnected();
     const initializing = method === "initialize";
     // `ensureConnected()` starts an asynchronous Unix-socket connection. A
@@ -2328,7 +2337,7 @@ function createDesktopIpcClient({
       const timeout = setTimeout(() => {
         pendingRequests.delete(requestId);
         reject(new Error(`Desktop IPC request timed out: ${method}`));
-      }, requestTimeoutMs);
+      }, Math.max(1, Number(timeoutMs) || requestTimeoutMs));
       timeout.unref?.();
 
       pendingRequests.set(requestId, {
@@ -3531,11 +3540,45 @@ function readThreadId(params) {
     || readString(params?.conversation_id);
 }
 
+// Desktop IPC v2 keeps the app-server request separate from Desktop-only
+// composer metadata. The phone already supplies a complete turn/start request,
+// so the context can inherit the owner's current thread settings. Reuse the
+// originating JSON-RPC id as the client user-message id to preserve one logical
+// user input across the follower handoff.
+function desktopFollowerStartTurnParamsForIpc(params) {
+  const conversationId = readString(params?.conversationId)
+    || readString(params?.conversation_id)
+    || readString(params?.turnStartParams?.threadId)
+    || readString(params?.turn_start_params?.threadId);
+  const rawRequest = params?.turnStartParams && typeof params.turnStartParams === "object"
+    && !Array.isArray(params.turnStartParams)
+    ? params.turnStartParams
+    : {};
+  const senderRequestId = readString(params?.senderRequestId)
+    || readString(params?.sender_request_id);
+  return {
+    conversationId,
+    turnStart: {
+      request: {
+        ...rawRequest,
+        threadId: conversationId,
+        ...(readString(rawRequest.clientUserMessageId)
+          ? {}
+          : senderRequestId ? { clientUserMessageId: senderRequestId } : {}),
+      },
+      context: {
+        inheritThreadSettings: true,
+      },
+    },
+  };
+}
+
 module.exports = {
   applyConversationStateChange,
   buildDesktopTurnsListResult,
   createDesktopIpcClient,
   createDesktopIpcActionFollower,
+  desktopFollowerStartTurnParamsForIpc,
   desktopFollowerPayloadForResponse,
   projectDesktopAssistantDeltaNotifications,
   projectPendingDesktopActions,
