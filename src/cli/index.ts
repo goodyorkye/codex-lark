@@ -23,7 +23,7 @@ const program = new Command();
 
 program
   .name('codex-lark')
-  .description('Control Codex Desktop from Feishu/Lark — no separate Codex CLI install')
+  .description('Continue Codex tasks from ChatGPT or Codex Desktop in Feishu/Lark')
   .version(pkg.version, '-v, --version')
   .option('--profile <name>', 'profile name (default: codex)')
   .option('--workspace <path>', 'initial working directory for first-time setup')

@@ -8,28 +8,30 @@
   <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/node/v/codex-lark?label=Node.js"></a>
 </p>
 
-**用手机飞书，随时继续电脑上的 Codex Desktop 任务。**
+**用手机飞书，随时继续 ChatGPT / Codex Desktop 里的 Codex 任务。**
 
-你不需要在手机上运行另一个 Agent，也不用重新描述工作背景。`codex-lark` 把电脑中已有的项目和任务带到飞书，让你离开电脑后仍能接着处理，回到电脑时又可以继续使用同一个任务。
+你不需要在手机上运行另一个 Agent，也不用重新描述工作背景。`codex-lark` 把 ChatGPT 或 Codex Desktop 里已有的 Codex 项目和任务带到飞书，让你离开电脑后仍能接着处理，回到电脑时又可以继续使用同一个任务。
 
-**用飞书扫一次码，即可一键创建并绑定专属机器人。只用这一个机器人，就能控制整台电脑上 Codex Desktop 的多个项目和多个任务。**
+**用飞书扫一次码，即可一键创建并绑定专属机器人。只用这一个机器人，就能管理这台电脑上 ChatGPT / Codex Desktop 里的多个 Codex 项目和任务。**
+
+这里连接的是桌面应用里的 **Codex 项目与任务**，不是普通 ChatGPT 聊天或 ChatGPT Work 会话。
 
 **飞书中采用卡片式按钮操作。** 最近任务、项目、模型、推理强度和组合输入都可以直接点击和切换，不用记命令，也不用反复输入名称。
 
 [English](README.en.md) · [常见问题](docs/TROUBLESHOOTING.md) · [隐私说明](docs/PRIVACY.md)
 
 <p align="center">
-  <img src="docs/images/feishu-card-navigation.png" width="420" alt="飞书中的 Codex Desktop 常用操作卡片">
+  <img src="docs/images/feishu-card-navigation.png" width="420" alt="飞书中的 ChatGPT / Codex Desktop 常用操作卡片">
 </p>
 
 ## 它适合什么场景
 
-- 电脑上的 Codex 正在执行任务，你想用手机查看进展或处理审批。
+- ChatGPT / Codex Desktop 里的 Codex 正在执行任务，你想用手机查看进展或处理审批。
 - 临时离开电脑后，想从飞书继续某个已有任务。
 - 同时进行多个项目，希望在手机上快速切换，而不是重新建立上下文。
 - 想把文字、图片、语音和文件一起交给 Codex，但不想使用远程桌面。
 
-`codex-lark` 的重点不是“在飞书里再造一个 Codex”，而是让飞书成为 **Codex Desktop 的轻量手机遥控器**。
+`codex-lark` 的重点不是“在飞书里再造一个 Codex”，而是让飞书成为 **ChatGPT / Codex Desktop 里 Codex 任务的轻量手机遥控器**。
 
 ## 手机上可以做什么
 
@@ -49,12 +51,12 @@
 准备好：
 
 - Node.js 20.12 或更高版本
-- 已登录的官方 Codex Desktop
+- 已登录的官方 ChatGPT 或 Codex Desktop
   - macOS：ChatGPT 或 Codex Desktop
   - Windows：从 Microsoft Store 安装的 Codex Desktop
 - 手机飞书或 Lark
 
-### 1. 打开电脑上的 Codex Desktop
+### 1. 打开电脑上的 ChatGPT 或 Codex Desktop
 
 确认它已经登录并能正常使用。
 
@@ -80,14 +82,14 @@ npx -y codex-lark@latest
 2. 像普通聊天一样发送消息。
 3. 需要一起发送文字和附件时，点击“组合输入”。
 4. Codex 请求权限时，直接在审批卡片中选择是否允许。
-5. 需要回到电脑时，打开 Codex Desktop 中的同一个任务继续即可。
+5. 需要回到电脑时，打开 ChatGPT / Codex Desktop 中的同一个 Codex 任务继续即可。
 
 按 `Ctrl+C` 可以停止程序；关闭终端也会断开手机连接，但不会删除 Codex 任务或飞书配置。
 
 ## 为什么用起来没有压力
 
 - **沿用 Desktop 上下文**：手机和电脑继续的是同一项工作。
-- **不安装另一套 Codex**：直接使用官方 Desktop 已有的登录和任务。
+- **不安装另一套 Codex**：直接使用官方 ChatGPT / Codex Desktop 已有的登录和任务。
 - **扫码即用**：机器人创建和连接由程序完成。
 - **一个机器人管理全部工作**：不需要为每个项目或任务分别创建机器人。
 - **卡片按钮，点击即切换**：项目、任务、模型、推理强度和组合输入都不需要记命令。

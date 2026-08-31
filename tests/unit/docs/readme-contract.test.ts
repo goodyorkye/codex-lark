@@ -5,12 +5,14 @@ describe('README product contract', () => {
   it('leads with continuing existing Desktop work from the phone', async () => {
     const docs = await readDocs();
     for (const phrase of [
-      'Continue your Codex Desktop tasks',
-      '继续电脑上的 Codex Desktop 任务',
-      'lightweight phone remote for Codex Desktop',
-      'Codex Desktop 的轻量手机遥控器',
-      'That single assistant can control multiple projects and tasks',
-      '只用这一个机器人，就能控制整台电脑上 Codex Desktop 的多个项目和多个任务',
+      'Continue Codex tasks from ChatGPT or Codex Desktop',
+      '继续 ChatGPT / Codex Desktop 里的 Codex 任务',
+      'lightweight phone remote for Codex tasks in ChatGPT / Codex Desktop',
+      'ChatGPT / Codex Desktop 里 Codex 任务的轻量手机遥控器',
+      'That single assistant can manage multiple Codex projects and tasks',
+      '只用这一个机器人，就能管理这台电脑上 ChatGPT / Codex Desktop 里的多个 Codex 项目和任务',
+      'not ordinary ChatGPT chats or ChatGPT Work conversations',
+      '不是普通 ChatGPT 聊天或 ChatGPT Work 会话',
       'Card buttons, one-tap switching',
       '卡片按钮，点击即切换',
       'npx -y codex-lark@latest',

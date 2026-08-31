@@ -8,28 +8,30 @@
   <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/node/v/codex-lark"></a>
 </p>
 
-**Continue your Codex Desktop tasks from Feishu or Lark on your phone.**
+**Continue Codex tasks from ChatGPT or Codex Desktop in Feishu/Lark on your phone.**
 
-You do not start a second agent on your phone or explain the work again. `codex-lark` brings your existing Desktop projects and tasks into Feishu/Lark, so you can continue while away and return to the same task on your computer later.
+You do not start a second agent on your phone or explain the work again. `codex-lark` brings existing Codex projects and tasks from ChatGPT or Codex Desktop into Feishu/Lark, so you can continue while away and return to the same task on your computer later.
 
-**Scan once in Feishu/Lark to create and connect your personal assistant automatically. That single assistant can control multiple projects and tasks across the entire Codex Desktop on your computer.**
+**Scan once in Feishu/Lark to create and connect your personal assistant automatically. That single assistant can manage multiple Codex projects and tasks from ChatGPT / Codex Desktop on your computer.**
+
+It connects specifically to **Codex projects and tasks** in the desktop app—not ordinary ChatGPT chats or ChatGPT Work conversations.
 
 **Feishu/Lark uses convenient card buttons throughout.** Recent tasks, projects, models, reasoning effort, and composed input are one tap away—there are no commands or names to memorize.
 
 [简体中文](README.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Privacy](docs/PRIVACY.md)
 
 <p align="center">
-  <img src="docs/images/feishu-card-navigation.png" width="420" alt="Codex Desktop common actions card in Feishu">
+  <img src="docs/images/feishu-card-navigation.png" width="420" alt="ChatGPT / Codex Desktop common actions card in Feishu">
 </p>
 
 ## When it is useful
 
-- Codex is working on your computer and you want to check progress or approve an action from your phone.
+- Codex is working in ChatGPT / Codex Desktop and you want to check progress or approve an action from your phone.
 - You step away from the computer and want to continue an existing task in Feishu/Lark.
 - You work across several projects and need to switch between them without rebuilding context.
 - You want to send text, images, audio, and files to Codex without using a general-purpose remote desktop.
 
-`codex-lark` does not try to recreate Codex inside Feishu. It turns Feishu into a **lightweight phone remote for Codex Desktop**.
+`codex-lark` does not try to recreate Codex inside Feishu. It turns Feishu into a **lightweight phone remote for Codex tasks in ChatGPT / Codex Desktop**.
 
 ## What you can do from your phone
 
@@ -49,12 +51,12 @@ Projects, tasks, models, and common actions appear as Feishu/Lark cards. You can
 You need:
 
 - Node.js 20.12 or later
-- A signed-in official Codex Desktop app
+- A signed-in official ChatGPT or Codex Desktop app
   - macOS: ChatGPT or Codex Desktop
   - Windows: Codex Desktop from Microsoft Store
 - Feishu or Lark on your phone
 
-### 1. Open Codex Desktop
+### 1. Open ChatGPT or Codex Desktop
 
 Make sure it is signed in and working normally.
 
@@ -80,14 +82,14 @@ Keep the terminal open, then in Feishu/Lark:
 2. Send a message as you would in a normal chat.
 3. Tap **Compose input** when text and attachments belong in one turn.
 4. Respond to permission requests directly on their approval cards.
-5. When you return to the computer, open the same task in Codex Desktop and continue.
+5. When you return to the computer, open the same Codex task in ChatGPT / Codex Desktop and continue.
 
 Press `Ctrl+C` to stop. Closing the terminal also disconnects the phone, but it does not delete your Codex tasks or Feishu/Lark setup.
 
 ## Why it feels lightweight
 
 - **Your Desktop context stays with you:** phone and computer continue the same work.
-- **No second Codex installation:** it uses the official Desktop app's existing login and tasks.
+- **No second Codex installation:** it uses the official ChatGPT / Codex Desktop login and tasks already on your computer.
 - **Scan and go:** the assistant is created and connected for you.
 - **One assistant for all your work:** you do not create a separate bot for every project or task.
 - **Card buttons, one-tap switching:** projects, tasks, models, reasoning effort, and composed input do not require commands.
