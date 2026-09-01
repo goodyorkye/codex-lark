@@ -7,6 +7,7 @@ import {
   projectHistoryMarkdown,
   type HistoryResource,
 } from '../../card/history-content';
+import { codexNotificationCard } from '../../card/codex-cards';
 import { resolveAppPaths } from '../../config/app-paths';
 import {
   loadRootConfig,
@@ -22,10 +23,13 @@ export interface NotifyOptions {
   profile?: string;
   to?: string;
   title?: string;
+  thread?: string;
+  taskTitle?: string;
   markdownFile?: string;
   files?: string[];
   cwd?: string;
   stdin?: boolean;
+  plain?: boolean;
   json?: boolean;
   rootDir?: string;
 }
@@ -34,6 +38,8 @@ export interface NotifyResult {
   profile: string;
   messageId: string;
   recipient: 'owner' | 'explicit';
+  format: 'card' | 'markdown';
+  threadId?: string;
   resources: HistoryMediaReport;
 }
 
@@ -42,6 +48,7 @@ export interface NotifyDependencies {
   sendResources?: typeof sendHistoryResources;
   readStdin?: () => Promise<string>;
   print?: (text: string) => void;
+  env?: NodeJS.ProcessEnv;
 }
 
 export async function runNotify(
@@ -84,8 +91,23 @@ export async function runNotify(
     ...projected.resources,
     ...explicitFileResources(options.files ?? [], cwd),
   ]);
-  const body = notificationMarkdown(options.title, projected.markdown, options.files ?? []);
-  const sent = await channel.send(recipient, { markdown: body });
+  const title = notificationTitle(options.title);
+  const body = notificationBody(projected.markdown, options.files ?? []);
+  const env = deps.env ?? process.env;
+  const threadId = options.thread?.trim() || env.CODEX_THREAD_ID?.trim();
+  const format = options.plain ? 'markdown' : 'card';
+  const sent = await channel.send(recipient, options.plain
+    ? { markdown: notificationMarkdown(title, body) }
+    : {
+        card: codexNotificationCard({
+          title,
+          markdown: body,
+          profile,
+          cwd,
+          threadId,
+          taskTitle: options.taskTitle,
+        }),
+      });
   const sendResources = deps.sendResources ?? sendHistoryResources;
   const report = await sendResources(channel, recipient, sent.messageId, cwd, resources);
   if (report.failed > 0 || report.skipped > 0) {
@@ -99,13 +121,15 @@ export async function runNotify(
     profile,
     messageId: sent.messageId,
     recipient: explicitTarget ? 'explicit' : 'owner',
+    format,
+    ...(threadId ? { threadId } : {}),
     resources: report,
   };
   const print = deps.print ?? console.log;
   if (options.json) {
     print(JSON.stringify(result));
   } else {
-    print(`✓ 已推送到飞书（profile=${profile}, resources=${report.sent}）`);
+    print(`✓ 已推送到飞书（profile=${profile}, format=${format}, resources=${report.sent}）`);
   }
   return result;
 }
@@ -145,20 +169,22 @@ async function resolveOwner(channel: LarkChannel): Promise<string> {
   return owner;
 }
 
-function notificationMarkdown(
-  title: string | undefined,
-  markdown: string,
-  files: readonly string[],
-): string {
-  const heading = (title?.trim() || DEFAULT_TITLE).replace(/[\r\n]+/g, ' ').slice(0, 120);
+function notificationTitle(title: string | undefined): string {
+  return (title?.trim() || DEFAULT_TITLE).replace(/[\r\n]+/g, ' ').slice(0, 120);
+}
+
+function notificationBody(markdown: string, files: readonly string[]): string {
   const attachmentNames = files
     .map((file) => basename(file.trim()))
     .filter(Boolean);
   return [
-    `## ${heading}`,
     markdown,
     attachmentNames.length > 0 ? `📎 附件：${attachmentNames.join('、')}` : '',
   ].filter(Boolean).join('\n\n');
+}
+
+function notificationMarkdown(title: string, body: string): string {
+  return `## ${title}\n\n${body}`;
 }
 
 function explicitFileResources(files: readonly string[], cwd: string): HistoryResource[] {

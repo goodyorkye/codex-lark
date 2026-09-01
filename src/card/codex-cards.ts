@@ -22,6 +22,42 @@ export interface CodexRemoteNavigationInfo {
   hasCurrentTask?: boolean;
 }
 
+export interface CodexNotificationCardInfo {
+  title: string;
+  markdown: string;
+  profile: string;
+  cwd: string;
+  threadId?: string;
+  taskTitle?: string;
+}
+
+export function codexNotificationCard(info: CodexNotificationCardInfo): object {
+  const projectName = basename(info.cwd) || info.cwd;
+  const task = info.threadId
+    ? `${info.taskTitle?.trim() ? `**${escapeMd(info.taskTitle.trim())}** · ` : ''}\`${escapeMd(shortId(info.threadId))}\``
+    : '未关联 Codex 会话';
+  const elements: object[] = [
+    { tag: 'markdown', content: truncate(info.markdown, 12_000) },
+    { tag: 'hr' },
+    {
+      tag: 'markdown',
+      content: [
+        `🤖 **Profile**：${escapeMd(info.profile)}`,
+        `📁 **项目**：**${escapeMd(projectName)}**\n${escapeMd(info.cwd)}`,
+        `💬 **会话**：${task}`,
+      ].join('\n\n'),
+      text_size: 'notation',
+    },
+  ];
+  if (info.threadId) {
+    elements.push(buttonRow([
+      actionButton('继续此会话', 'task.use', 'primary', info.threadId),
+      actionButton('查看详情', 'task.show', 'default', info.threadId),
+    ]));
+  }
+  return card(info.title, elements, 'green');
+}
+
 export function codexRemoteNavigationCard(info: CodexRemoteNavigationInfo = {}): object {
   return card('常用操作', codexRemoteNavigationElements(info));
 }
@@ -363,13 +399,13 @@ function appendOverflow(elements: object[], total: number, visible: number): obj
   ];
 }
 
-function card(title: string, elements: object[]): object {
+function card(title: string, elements: object[], template = 'blue'): object {
   return {
     schema: '2.0',
     config: { summary: { content: title } },
     header: {
       title: { tag: 'plain_text', content: title },
-      template: 'blue',
+      template,
     },
     body: { elements },
   };

@@ -13,6 +13,10 @@ Use `codex-lark notify` for delivery:
 codex-lark notify "任务已经完成。" --title "任务完成"
 ```
 
+The default delivery is an interactive result card. In a Codex task, the command automatically reads `CODEX_THREAD_ID` and the current working directory, so the card identifies the source project and thread and provides actions to continue that thread or view its details. Do not add `--thread` or `--cwd` when the automatically detected context is correct. Card actions require the codex-lark bridge to be running when the user clicks them; the initial delivery does not.
+
+Preserve Markdown line breaks as real newline characters. Never put the two literal characters `\\n` in the positional message. For a multi-line result, prefer an existing `--markdown-file`; otherwise pass actual line breaks in the message or use `--stdin`.
+
 Prefer an existing Markdown result when the completed task produced one:
 
 ```bash
@@ -24,6 +28,8 @@ codex-lark notify \
 ```
 
 Repeat `--file` for multiple output files. Markdown image and file links are projected into native Feishu/Lark resource messages. `--cwd` defines the allowed workspace root used to resolve those local links; when omitted for `--markdown-file`, the file's directory is used.
+
+Use `--plain` only when the user explicitly requests a plain, non-interactive Markdown notification.
 
 The command uses the active profile by default. Add `--profile <name>` only when the user identifies another configured profile. The default recipient is that profile's Feishu/Lark application owner. Use `--to <open_id|chat_id>` only when the user explicitly identifies another recipient or chat.
 

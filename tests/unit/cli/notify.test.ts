@@ -17,7 +17,7 @@ describe('codex-lark notify', () => {
     tmp = undefined;
   });
 
-  it('pushes Markdown to the active profile owner', async () => {
+  it('pushes an interactive result card with Codex context to the active profile owner', async () => {
     tmp = await configuredProfile();
     const channel = notifyChannel('ou_owner');
     const output: string[] = [];
@@ -25,19 +25,30 @@ describe('codex-lark notify', () => {
     const result = await runNotify('构建和测试均已通过。', {
       rootDir: tmp.root,
       title: '发布完成',
+      cwd: tmp.workspace,
+      taskTitle: '发布 codex-lark',
     }, {
       createChannel: () => channel as unknown as LarkChannel,
       print: (text) => output.push(text),
+      env: { CODEX_THREAD_ID: 'thread-1234567890' },
     });
 
     expect(channel.sent).toHaveLength(1);
-    expect(channel.sent[0]).toMatchObject({
-      chatId: 'ou_owner',
-      content: { markdown: '## 发布完成\n\n构建和测试均已通过。' },
-    });
+    expect(channel.sent[0]?.chatId).toBe('ou_owner');
+    const rendered = JSON.stringify(channel.sent[0]?.content);
+    expect(rendered).toContain('发布完成');
+    expect(rendered).toContain('构建和测试均已通过');
+    expect(rendered).toContain('发布 codex\\\\-lark');
+    expect(rendered).toContain('codex');
+    expect(rendered).toContain('workspace');
+    expect(rendered).toContain('task.use');
+    expect(rendered).toContain('task.show');
+    expect(rendered).toContain('thread-1234567890');
     expect(result).toMatchObject({
       profile: 'codex',
       recipient: 'owner',
+      format: 'card',
+      threadId: 'thread-1234567890',
       resources: { sent: 0, skipped: 0, failed: 0 },
     });
     expect(output[0]).toContain('已推送到飞书');
@@ -56,12 +67,12 @@ describe('codex-lark notify', () => {
     }, {
       createChannel: () => channel as unknown as LarkChannel,
       print: () => {},
+      env: {},
     });
 
     expect(channel.sent).toHaveLength(2);
-    expect(channel.sent[0]?.content).toEqual({
-      markdown: '## Codex 任务完成\n\n结果如下：\n\n🖼️ 测试图（result\\.png）',
-    });
+    expect(JSON.stringify(channel.sent[0]?.content)).toContain('结果如下');
+    expect(JSON.stringify(channel.sent[0]?.content)).toContain('测试图');
     expect(channel.sent[1]).toMatchObject({
       chatId: 'ou_owner',
       content: { image: { source: expect.any(Buffer) } },
@@ -87,13 +98,38 @@ describe('codex-lark notify', () => {
     }, {
       createChannel: () => channel as unknown as LarkChannel,
       print: () => {},
+      env: {},
     });
 
     expect(result.recipient).toBe('explicit');
+    expect(result.format).toBe('card');
     expect(result.resources.sent).toBe(2);
     expect(channel.sent.map((entry) => entry.chatId)).toEqual(['oc_team', 'oc_team', 'oc_team']);
+    expect(JSON.stringify(channel.sent[0]?.content)).toContain('任务已完成，相关文件见附件');
+    expect(JSON.stringify(channel.sent[0]?.content)).toContain('report.pdf、data.csv');
+    expect(JSON.stringify(channel.sent[0]?.content)).not.toContain('task.use');
+  });
+
+  it('supports a plain Markdown fallback', async () => {
+    tmp = await configuredProfile();
+    const channel = notifyChannel('ou_owner');
+
+    const result = await runNotify('只发送文字。', {
+      rootDir: tmp.root,
+      title: '纯文本通知',
+      plain: true,
+    }, {
+      createChannel: () => channel as unknown as LarkChannel,
+      print: () => {},
+      env: { CODEX_THREAD_ID: 'thread-ignored-by-plain-rendering' },
+    });
+
     expect(channel.sent[0]?.content).toEqual({
-      markdown: '## Codex 任务完成\n\n任务已完成，相关文件见附件。\n\n📎 附件：report.pdf、data.csv',
+      markdown: '## 纯文本通知\n\n只发送文字。',
+    });
+    expect(result).toMatchObject({
+      format: 'markdown',
+      threadId: 'thread-ignored-by-plain-rendering',
     });
   });
 

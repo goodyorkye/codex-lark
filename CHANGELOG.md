@@ -4,6 +4,16 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-01
+
+### Added
+
+- Send `codex-lark notify` results as interactive cards with source profile, project, and Codex thread context, plus actions to continue the thread or view its details.
+
+### Changed
+
+- Discover the current Codex thread from `CODEX_THREAD_ID` and add `--thread`, `--task-title`, and `--plain` notification options.
+
 ## [0.2.4] - 2026-09-01
 
 ### Added

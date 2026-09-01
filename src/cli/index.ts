@@ -74,10 +74,13 @@ program
   .option('--profile <name>', 'profile name (defaults to the active profile)')
   .option('--to <id>', 'recipient open_id or chat_id (defaults to the app owner)')
   .option('--title <title>', 'notification title')
+  .option('--thread <id>', 'Codex thread id (defaults to CODEX_THREAD_ID)')
+  .option('--task-title <title>', 'Codex task title shown in the notification card')
   .option('--markdown-file <path>', 'read notification Markdown from a file')
   .option('--file <path>', 'attach a local file; repeat for multiple files', collectOption, [])
   .option('--cwd <path>', 'workspace root for resolving local Markdown resources')
   .option('--stdin', 'read notification Markdown from stdin')
+  .option('--plain', 'send plain Markdown instead of an interactive card')
   .option('--json', 'print the result as JSON')
   .action(async (
     message: string | undefined,
@@ -85,10 +88,13 @@ program
       profile?: string;
       to?: string;
       title?: string;
+      thread?: string;
+      taskTitle?: string;
       markdownFile?: string;
       file?: string[];
       cwd?: string;
       stdin?: boolean;
+      plain?: boolean;
       json?: boolean;
     },
     command: Command,
@@ -98,10 +104,13 @@ program
       profile: opts.profile ?? withGlobals.profile,
       to: opts.to,
       title: opts.title,
+      thread: opts.thread,
+      taskTitle: opts.taskTitle,
       markdownFile: opts.markdownFile,
       files: opts.file,
       cwd: opts.cwd,
       stdin: opts.stdin,
+      plain: opts.plain,
       json: opts.json,
     });
   });

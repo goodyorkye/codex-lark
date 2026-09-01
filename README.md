@@ -88,7 +88,7 @@ npx -y codex-lark@latest
 
 ## 主动推送任务结果
 
-完成首次扫码配置后，可以从终端把任务结果直接推送给当前 profile 的飞书应用所有者。这个命令通过飞书 REST API 直接发送，不要求 bridge 正在运行：
+完成首次扫码配置后，可以从终端把任务结果直接推送给当前 profile 的飞书应用所有者。默认消息是一张结果卡片，显示推送内容、profile、项目和 Codex 会话来源。发送本身通过飞书 REST API 完成，不要求 bridge 正在运行：
 
 ```bash
 codex-lark notify "构建和测试均已通过。" \
@@ -104,6 +104,8 @@ codex-lark notify \
   --cwd /absolute/path/to/workspace \
   --file /absolute/path/report.pdf
 ```
+
+在 Codex 任务中调用时，命令会从 `CODEX_THREAD_ID` 自动识别当前会话，并在卡片上显示“继续此会话”和“查看详情”按钮；也可以用 `--thread <id>` 显式指定。按钮点击时需要 `codex-lark` bridge 正在运行，以便接收飞书回调并切换到对应会话。若只需要旧式 Markdown 消息，可添加 `--plain`。
 
 可以重复使用 `--file`。Markdown 中引用的本地图片、音频、视频和文件也会作为飞书原生资源消息发送。使用 `--to <open_id|chat_id>` 可以显式指定其他接收人或群聊；未指定时默认发送给应用所有者。
 

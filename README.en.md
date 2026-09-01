@@ -88,7 +88,7 @@ Press `Ctrl+C` to stop. Closing the terminal also disconnects the phone, but it 
 
 ## Push completed task results
 
-After the initial QR setup, you can push a completed task result directly to the Feishu/Lark application owner for the selected profile. This command sends through the REST API and does not require the bridge to be running:
+After the initial QR setup, you can push a completed task result directly to the Feishu/Lark application owner for the selected profile. The default message is a result card showing the content, profile, project, and source Codex thread. Delivery uses the REST API and does not require the bridge to be running:
 
 ```bash
 codex-lark notify "The build and tests passed." \
@@ -104,6 +104,8 @@ codex-lark notify \
   --cwd /absolute/path/to/workspace \
   --file /absolute/path/report.pdf
 ```
+
+When invoked from a Codex task, the command discovers the current thread from `CODEX_THREAD_ID` and adds **Continue this thread** and **View details** actions. You can also provide `--thread <id>` explicitly. The `codex-lark` bridge must be running when an action is clicked so it can receive the Feishu/Lark callback and switch threads. Add `--plain` when a non-interactive Markdown message is preferred.
 
 Repeat `--file` for multiple artifacts. Local images, audio, video, and files referenced by the Markdown are also delivered as native Feishu/Lark resource messages. Use `--to <open_id|chat_id>` to select another recipient or chat; otherwise the application owner is used.
 

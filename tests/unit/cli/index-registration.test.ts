@@ -34,6 +34,9 @@ describe('CLI command registration', () => {
     expect(source).toContain('runNotify');
     expect(source).toContain('--markdown-file <path>');
     expect(source).toContain('--file <path>');
+    expect(source).toContain('--thread <id>');
+    expect(source).toContain('--task-title <title>');
+    expect(source).toContain('--plain');
     expect(source).toContain('optsWithGlobals');
   });
 

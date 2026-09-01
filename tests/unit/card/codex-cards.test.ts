@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  codexNotificationCard,
   codexRemoteHelpCard,
   codexRemoteNavigationCard,
   codexRemoteStatusCard,
@@ -16,6 +17,47 @@ import {
 } from '../../../src/card/codex-cards';
 
 describe('Codex navigation cards', () => {
+  it('renders notification context and task actions when a thread is available', () => {
+    const notification = codexNotificationCard({
+      title: '任务完成',
+      markdown: '构建和测试均已通过。\n\n- 单元测试通过\n- 构建通过',
+      profile: 'codex',
+      cwd: '/workspace/demo-project',
+      threadId: '019d1234-5678-7000-9000-abcdef123456',
+      taskTitle: '发布新版本',
+    }) as { body: { elements: Array<{ content?: string }> } };
+    const rendered = JSON.stringify(notification);
+
+    expect(rendered).toContain('任务完成');
+    expect(rendered).toContain('构建和测试均已通过');
+    expect(notification.body.elements[0]?.content).toBe(
+      '构建和测试均已通过。\n\n- 单元测试通过\n- 构建通过',
+    );
+    expect(notification.body.elements[0]?.content).not.toContain('\\n');
+    expect(rendered).toContain('green');
+    expect(rendered).toContain('demo\\\\-project');
+    expect(rendered).toContain('/workspace/demo\\\\-project');
+    expect(rendered).toContain('发布新版本');
+    expect(rendered).toContain('继续此会话');
+    expect(rendered).toContain('查看详情');
+    expect(rendered).toContain('task.use');
+    expect(rendered).toContain('task.show');
+    expect(rendered).toContain('019d1234-5678-7000-9000-abcdef123456');
+  });
+
+  it('renders a static notification card without a thread', () => {
+    const rendered = JSON.stringify(codexNotificationCard({
+      title: '任务完成',
+      markdown: '结果已生成。',
+      profile: 'codex',
+      cwd: '/workspace/demo',
+    }));
+
+    expect(rendered).toContain('未关联 Codex 会话');
+    expect(rendered).not.toContain('task.use');
+    expect(rendered).not.toContain('task.show');
+  });
+
   it('renders project and task callbacks understood by the dispatcher', () => {
     const projects = JSON.stringify(projectsCard([{ cwd: '/tmp/demo', taskCount: 2 }], '/tmp/demo'));
     expect(projects).toContain('项目列表');
