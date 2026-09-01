@@ -1,6 +1,11 @@
 import { basename } from 'node:path';
 import type { CodexModel, CodexThread, CodexThreadItem } from '../codex/app-server/protocol';
 import type { CompositionSnapshot } from '../bot/composition-store';
+import {
+  projectHistoryMarkdown,
+  projectUserMessage,
+  type HistoryResource,
+} from './history-content';
 
 export interface CodexProjectSummary {
   id?: string;
@@ -221,49 +226,46 @@ export function recentTasksCard(threads: CodexThread[], currentThreadId?: string
   );
 }
 
-export function taskDetailCard(thread: CodexThread): object {
-  const elements: object[] = [{
-    tag: 'markdown',
+export interface CodexHistoryPresentation {
+  card: object;
+  resources: HistoryResource[];
+}
+
+export function taskDetailPresentation(thread: CodexThread): CodexHistoryPresentation {
+  const heading: HistoryBlock = {
     content: `**${escapeMd(threadTitle(thread))}**\n\n项目：${escapeMd(thread.cwd)}\n任务 ID：\`${escapeMd(thread.id)}\``,
-  }];
-  for (const turn of thread.turns ?? []) {
-    for (const item of turn.items ?? []) {
-      if (item.type === 'userMessage') {
-        const content = Array.isArray(item.content)
-          ? item.content
-              .filter((part) => part && typeof part === 'object' && (part as { type?: string }).type === 'text')
-              .map((part) => String((part as { text?: unknown }).text ?? ''))
-              .join('\n')
-          : '';
-        if (content) elements.push({ tag: 'markdown', content: `👤 ${truncate(content, 900)}` });
-      } else if (item.type === 'agentMessage' && item.text) {
-        elements.push({ tag: 'markdown', content: `🤖 ${truncate(item.text, 1600)}` });
-      }
-    }
+    resources: [],
+  };
+  const history = (thread.turns ?? []).flatMap((turn) =>
+    (turn.items ?? []).map(historyBlockForItem).filter(isDefined));
+  const selected = limitHistoryBlocks(history, 17, '更早的过程已省略');
+  return presentation('任务详情', [heading, ...selected]);
+}
+
+export function taskDetailCard(thread: CodexThread): object {
+  return taskDetailPresentation(thread).card;
+}
+
+export function latestTurnPresentation(thread: CodexThread): CodexHistoryPresentation {
+  const turn = [...(thread.turns ?? [])]
+    .reverse()
+    .find((candidate) => (candidate.items ?? []).some((item) => Boolean(historyBlockForItem(item))));
+  if (!turn) {
+    return {
+      card: card('最近一轮', [{ tag: 'markdown', content: '当前任务还没有可显示的对话记录。' }]),
+      resources: [],
+    };
   }
-  return card('任务详情', elements.slice(-18));
+  const heading: HistoryBlock = {
+    content: `**${escapeMd(threadTitle(thread))}**`,
+    resources: [],
+  };
+  const history = (turn.items ?? []).map(historyBlockForItem).filter(isDefined);
+  return presentation('最近一轮', [heading, ...limitHistoryBlocks(history, 23, '中间过程已省略')]);
 }
 
 export function latestTurnCard(thread: CodexThread): object {
-  const turn = [...(thread.turns ?? [])]
-    .reverse()
-    .find((candidate) => (candidate.items ?? []).some(isConversationItem));
-  if (!turn) {
-    return card('最近一轮', [{ tag: 'markdown', content: '当前任务还没有可显示的对话记录。' }]);
-  }
-  const elements: object[] = [{
-    tag: 'markdown',
-    content: `**${escapeMd(threadTitle(thread))}**`,
-  }];
-  for (const item of turn.items ?? []) {
-    if (item.type === 'userMessage') {
-      const text = userMessageText(item);
-      if (text) elements.push({ tag: 'markdown', content: `**你**\n${truncate(text, 1800)}` });
-    } else if (item.type === 'agentMessage' && item.text?.trim()) {
-      elements.push({ tag: 'markdown', content: `**Codex**\n${truncate(item.text, 3000)}` });
-    }
-  }
-  return card('最近一轮', elements);
+  return latestTurnPresentation(thread).card;
 }
 
 export function compositionInputCard(
@@ -442,21 +444,180 @@ function threadTitle(thread: CodexThread): string {
   return thread.name?.trim() || thread.preview?.trim() || '未命名任务';
 }
 
-function isConversationItem(item: CodexThreadItem): boolean {
-  return item.type === 'agentMessage'
-    ? Boolean(item.text?.trim())
-    : item.type === 'userMessage' && Boolean(userMessageText(item));
+interface HistoryBlock {
+  content: string;
+  resources: HistoryResource[];
 }
 
-function userMessageText(item: CodexThreadItem): string {
-  return Array.isArray(item.content)
-    ? item.content
-        .filter((part) => part && typeof part === 'object' && (part as { type?: string }).type === 'text')
-        .map((part) => String((part as { text?: unknown }).text ?? ''))
+function historyBlockForItem(item: CodexThreadItem): HistoryBlock | undefined {
+  if (item.type === 'userMessage') {
+    const projected = projectUserMessage(item);
+    return projected.markdown
+      ? { content: `**你**\n${truncate(projected.markdown, 2600)}`, resources: projected.resources }
+      : undefined;
+  }
+  if (item.type === 'agentMessage' && item.text?.trim()) {
+    const projected = projectHistoryMarkdown(truncate(item.text, 2800));
+    const role = item.phase === 'commentary' ? 'Codex · 进度' : 'Codex';
+    return { content: `**${role}**\n${projected.markdown}`, resources: projected.resources };
+  }
+  if (item.type === 'plan' && item.text?.trim()) {
+    return projectedBlock('🗒️ **计划**', item.text, 1800);
+  }
+  if (item.type === 'reasoning') {
+    const summary = textFromUnknown(item.summary);
+    return summary ? projectedBlock('🧠 **推理摘要**', summary, 1400) : undefined;
+  }
+  if (item.type === 'commandExecution') {
+    const lines = [
+      `状态：${escapeMd(item.status || '未知')}`,
+      item.command ? `命令：\`${escapeCodeSpan(truncate(item.command, 500))}\`` : '',
+      typeof item.exitCode === 'number' ? `退出码：${item.exitCode}` : '',
+      item.aggregatedOutput ? `\n${truncate(item.aggregatedOutput, 900)}` : '',
+    ].filter(Boolean).join('\n');
+    return projectedBlock('🛠️ **命令执行**', lines, 1800);
+  }
+  if (item.type === 'fileChange') {
+    const changes = Array.isArray(item.changes) ? item.changes : [];
+    const files = changes.slice(0, 12).map((change) => {
+      if (!isRecord(change)) return '• 未知文件修改';
+      const path = stringValue(change.path) || '未知路径';
+      const kind = stringValue(change.kind) || '修改';
+      return `• ${escapeMd(kind)}：\`${escapeCodeSpan(path)}\``;
+    });
+    if (changes.length > files.length) files.push(`• 另有 ${changes.length - files.length} 项`);
+    return {
+      content: `📝 **文件修改 · ${escapeMd(item.status || '未知')}**\n${files.join('\n') || '未提供文件列表'}`,
+      resources: [],
+    };
+  }
+  if (item.type === 'mcpToolCall' || item.type === 'dynamicToolCall') {
+    const name = item.type === 'mcpToolCall'
+      ? [item.server, item.tool].filter(Boolean).join(' / ')
+      : item.tool;
+    const error = textFromUnknown(item.error);
+    return projectedBlock(
+      '🔌 **工具调用**',
+      [name ? `工具：${name}` : '', `状态：${item.status || '未知'}`, error ? `错误：${error}` : '']
         .filter(Boolean)
-        .join('\n')
-        .trim()
-    : '';
+        .join('\n'),
+      1200,
+    );
+  }
+  if (item.type === 'collabToolCall') {
+    return projectedBlock(
+      '👥 **协作任务**',
+      [`操作：${item.tool || '未知'}`, `状态：${item.status || '未知'}`].join('\n'),
+      800,
+    );
+  }
+  if (item.type === 'webSearch') {
+    const query = stringValue(item.query) || textFromUnknown(item.action);
+    return query ? projectedBlock('🌐 **网页检索**', query, 800) : undefined;
+  }
+  if (item.type === 'imageView' && item.path) {
+    const resource: HistoryResource = {
+      kind: 'image',
+      source: item.path,
+      label: basename(item.path) || '查看的图片',
+      origin: 'agent-output',
+    };
+    return {
+      content: `🖼️ **查看图片**：${escapeMd(resource.label)}`,
+      resources: [resource],
+    };
+  }
+  if (item.type === 'enteredReviewMode' || item.type === 'exitedReviewMode') {
+    const label = item.type === 'enteredReviewMode' ? '开始审查' : '审查结果';
+    return projectedBlock(`🔎 **${label}**`, item.review || '', 1600);
+  }
+  if (item.type === 'contextCompaction') {
+    return { content: '🧹 **上下文已压缩**', resources: [] };
+  }
+  return undefined;
+}
+
+function projectedBlock(title: string, value: string, max: number): HistoryBlock | undefined {
+  const projected = projectHistoryMarkdown(truncate(value, max));
+  if (!projected.markdown) return undefined;
+  return {
+    content: `${title}\n${projected.markdown}`,
+    resources: projected.resources,
+  };
+}
+
+function presentation(title: string, blocks: HistoryBlock[]): CodexHistoryPresentation {
+  let remaining = 28_000;
+  const selected: HistoryBlock[] = [];
+  for (const block of blocks) {
+    if (remaining <= 0) break;
+    const content = truncate(block.content, Math.min(3_000, remaining));
+    if (!content) continue;
+    selected.push({ ...block, content });
+    remaining -= content.length;
+  }
+  if (selected.length < blocks.length && remaining > 20) {
+    selected.push({ content: '…其余内容因飞书卡片长度限制已省略', resources: [] });
+  }
+  return {
+    card: card(title, selected.map((block) => ({ tag: 'markdown', content: block.content }))),
+    resources: dedupeHistoryResources(selected.flatMap((block) => block.resources)),
+  };
+}
+
+function limitHistoryBlocks(
+  blocks: HistoryBlock[],
+  max: number,
+  omission: string,
+): HistoryBlock[] {
+  if (blocks.length <= max) return blocks;
+  const tailCount = Math.max(1, max - 2);
+  return [
+    blocks[0]!,
+    { content: `…${omission}（${blocks.length - tailCount - 1} 项）`, resources: [] },
+    ...blocks.slice(-tailCount),
+  ];
+}
+
+function dedupeHistoryResources(resources: HistoryResource[]): HistoryResource[] {
+  const seen = new Set<string>();
+  return resources.filter((resource) => {
+    const key = `${resource.kind}\0${resource.source}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function textFromUnknown(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(textFromUnknown).filter(Boolean).join('\n');
+  if (!isRecord(value)) return '';
+  for (const key of ['text', 'content', 'message', 'summary']) {
+    const text = textFromUnknown(value[key]);
+    if (text) return text;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
+}
+
+function escapeCodeSpan(value: string): string {
+  return value.replace(/`/g, '\\`').replace(/[\r\n]+/g, ' ');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function isDefined<T>(value: T | undefined): value is T {
+  return value !== undefined;
 }
 
 function shortId(id: string): string {

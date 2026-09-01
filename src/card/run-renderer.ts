@@ -4,6 +4,7 @@ import {
   type CodexRemoteNavigationInfo,
 } from './codex-cards';
 import { toolBodyMd, toolHeaderText } from './tool-render';
+import { projectHistoryMarkdown } from './history-content';
 
 const REASONING_MAX = 1500;
 const COLLAPSE_TOOL_THRESHOLD = 3;
@@ -37,7 +38,7 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
   for (const group of groupBlocks(state.blocks)) {
     if (group.kind === 'text') {
       if (group.content.trim()) {
-        elements.push(markdown(group.content));
+        elements.push(markdown(projectHistoryMarkdown(group.content).markdown));
       }
     } else if (group.kind === 'tools') {
       elements.push(...renderToolGroup(group.tools, state.terminal !== 'running'));
@@ -238,7 +239,7 @@ function reasoningPanel(content: string, active: boolean): object {
     title,
     expanded: active,
     border: 'grey',
-    body: truncate(content, REASONING_MAX),
+    body: truncate(projectHistoryMarkdown(content).markdown, REASONING_MAX),
   });
 }
 

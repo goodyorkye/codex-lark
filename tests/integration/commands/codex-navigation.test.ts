@@ -1,4 +1,4 @@
-import { mkdir, realpath } from 'node:fs/promises';
+import { mkdir, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { NormalizedMessage } from '@larksuite/channel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -92,6 +92,37 @@ describe('Codex phone navigation commands', () => {
     expect(card).toContain('刚刚的问题');
     expect(card).toContain('刚刚的回答');
     expect(card).not.toContain('更早的问题');
+  });
+
+  it('sends local artifacts from the latest turn without embedding invalid Feishu image keys', async () => {
+    const h = await createHarness();
+    const imagePath = join(h.tmp.workspace, 'upload-analysis-sample.png');
+    await writeFile(imagePath, Buffer.from('image-bytes'));
+    h.agent.readThread.mockResolvedValueOnce({
+      id: 'thread-a',
+      cwd: h.tmp.workspace,
+      name: '分析线上重复上传图片',
+      turns: [{
+        id: 'turn-latest',
+        items: [{
+          type: 'agentMessage',
+          text: `结论如下。\n\n![重复上传的图片](${imagePath})`,
+        }],
+      }],
+    });
+
+    await expect(h.run('/task latest')).resolves.toBe(true);
+
+    const cardMessage = h.channel.sent.find((message) =>
+      Boolean((message.content as { card?: unknown } | undefined)?.card));
+    const renderedCard = JSON.stringify(cardMessage?.content);
+    expect(renderedCard).toContain('重复上传的图片');
+    expect(renderedCard).not.toContain('![重复上传的图片]');
+    const mediaMessage = h.channel.sent.find((message) =>
+      Boolean((message.content as { image?: unknown } | undefined)?.image));
+    expect(Buffer.isBuffer(
+      (mediaMessage?.content as { image?: { source?: unknown } } | undefined)?.image?.source,
+    )).toBe(true);
   });
 
   it('fetches the selected task after switching between Desktop tasks', async () => {

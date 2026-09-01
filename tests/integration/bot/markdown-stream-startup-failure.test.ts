@@ -1,5 +1,5 @@
 import type { NormalizedMessage } from '@larksuite/channel';
-import { realpath } from 'node:fs/promises';
+import { realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProfileConfig } from '../../../src/config/profile-schema.js';
@@ -79,6 +79,45 @@ afterEach(async () => {
 });
 
 describe('markdown stream startup failures', () => {
+  it('sanitizes live image markdown and sends the local image natively after completion', async () => {
+    const markdownUpdates: string[] = [];
+    const h = await createHarness({
+      stream: async (_chatId, input) => {
+        const producer = (input as {
+          markdown?: (ctrl: { setContent(markdown: string): Promise<void> }) => Promise<void>;
+        }).markdown;
+        if (!producer) return;
+        await producer({
+          setContent: async (markdown) => {
+            markdownUpdates.push(markdown);
+          },
+        });
+      },
+    });
+    const imagePath = join(h.tmp.workspace, 'generated.png');
+    await writeFile(imagePath, Buffer.from('fake-png'));
+    h.agent.setEvents([
+      { type: 'text', delta: `完成 ![实时图片](${imagePath})` },
+      { type: 'done', terminationReason: 'normal' },
+    ]);
+    await startTestBridge(h);
+
+    await h.channel.handlers.message?.(message('om_image', '生成测试图片'));
+    await waitFor(() => h.channel.sent.some(({ content }) =>
+      typeof content === 'object' && content !== null && 'image' in content,
+    ));
+
+    expect(markdownUpdates.at(-1)).toContain('实时图片（generated\\.png）');
+    expect(markdownUpdates.at(-1)).not.toContain('![实时图片]');
+    const imageMessage = h.channel.sent.find(({ content }) =>
+      typeof content === 'object' && content !== null && 'image' in content,
+    );
+    expect(imageMessage?.content).toMatchObject({
+      image: { source: expect.any(Buffer) },
+    });
+    expect(imageMessage?.options).toMatchObject({ replyTo: 'om_image' });
+  });
+
   it('does not leave the IM queue blocked when the agent exits before stream producer starts', async () => {
     const h = await createHarness();
     await startTestBridge(h);

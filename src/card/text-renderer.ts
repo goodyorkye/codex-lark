@@ -1,5 +1,6 @@
 import type { Block, RunState, ToolEntry } from './run-state';
 import { toolHeaderText } from './tool-render';
+import { projectRunContent } from './run-content';
 
 /**
  * Render `RunState` as plain markdown text — used in `messageReply: 'text'`
@@ -12,6 +13,7 @@ import { toolHeaderText } from './tool-render';
  *   - Footer is appended inline at the bottom while running
  */
 export function renderText(state: RunState): string {
+  state = projectRunContent(state).state;
   const parts: string[] = [];
 
   for (const block of state.blocks) {

@@ -6,6 +6,7 @@ import {
   compositionInputCard,
   compositionInputSummary,
   latestTurnCard,
+  latestTurnPresentation,
   modelsCard,
   projectsCard,
   reasoningEffortsCard,
@@ -79,6 +80,45 @@ describe('Codex navigation cards', () => {
     expect(rendered).toContain('最近的回答');
     expect(rendered).not.toContain('较早的问题');
     expect(rendered).not.toContain('较早的回答');
+  });
+
+  it('sanitizes local artifacts and summarizes every supported process item', () => {
+    const latest = latestTurnPresentation({
+      id: 'thread-1',
+      cwd: '/workspace/demo',
+      name: '完整历史',
+      turns: [{
+        id: 'turn-latest',
+        items: [
+          { type: 'userMessage', content: [{ type: 'localImage', path: '/workspace/demo/input.png' }] },
+          { type: 'plan', text: '先分析再处理' },
+          { type: 'commandExecution', command: 'pnpm test', status: 'completed', exitCode: 0 },
+          { type: 'fileChange', status: 'completed', changes: [{ path: 'src/app.ts', kind: 'update' }] },
+          { type: 'mcpToolCall', server: 'example', tool: 'lookup', status: 'completed' },
+          { type: 'webSearch', query: '官方文档' },
+          { type: 'imageView', path: '/workspace/demo/preview.png' },
+          {
+            type: 'agentMessage',
+            phase: 'final_answer',
+            text: '结果如下\n\n![重复上传的图片](/workspace/demo/result.png)',
+          },
+        ],
+      }],
+    });
+    const rendered = JSON.stringify(latest.card);
+
+    expect(rendered).toContain('计划');
+    expect(rendered).toContain('命令执行');
+    expect(rendered).toContain('文件修改');
+    expect(rendered).toContain('工具调用');
+    expect(rendered).toContain('网页检索');
+    expect(rendered).toContain('查看图片');
+    expect(rendered).not.toContain('![重复上传的图片]');
+    expect(latest.resources.map((resource) => resource.source)).toEqual([
+      '/workspace/demo/input.png',
+      '/workspace/demo/preview.png',
+      '/workspace/demo/result.png',
+    ]);
   });
 
   it('renders reasoning-effort choices for the selected model', () => {

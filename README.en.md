@@ -39,8 +39,8 @@ It connects specifically to **Codex projects and tasks** in the desktop app—no
 - Continue an existing task or quickly start a new one inside a project.
 - Send text, images, audio, and files.
 - Use **Compose input** to submit several messages and attachments as one turn.
-- Follow Codex replies and execution progress live.
-- Fetch the latest turn when you want to catch up with work done on Desktop.
+- Follow Codex replies and execution progress live; images, audio, video, and files in a reply are sent as native Feishu/Lark messages when the run finishes.
+- Fetch the latest turn, including plans, tool activity, images, audio, video, and file artifacts.
 - Allow or decline command, file-change, and other permission requests from your phone.
 - Select a model and reasoning effort, or stop an active task.
 

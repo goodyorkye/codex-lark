@@ -40,6 +40,11 @@ export interface CodexThreadItem {
   id?: string;
   type: string;
   text?: string;
+  phase?: 'commentary' | 'final_answer' | string;
+  content?: unknown[];
+  summary?: unknown;
+  review?: string;
+  path?: string;
   command?: string;
   cwd?: string;
   status?: string;

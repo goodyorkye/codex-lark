@@ -183,6 +183,21 @@ describe('run card renderer snapshots', () => {
     expect(card).toContain(sensitivePath);
     expect(text).toContain(sensitivePath);
   });
+
+  it('projects live media markdown to safe placeholders in card and markdown modes', () => {
+    const imagePath = '/repo/generated/test.png';
+    const state = stateFrom([
+      { type: 'text', delta: `完成 ![测试图片](${imagePath})` },
+      { type: 'done', terminationReason: 'normal' },
+    ]);
+
+    const card = JSON.stringify(renderCard(state));
+    const text = renderText(state);
+    expect(card).not.toContain('![测试图片]');
+    expect(text).not.toContain('![测试图片]');
+    expect(card).toContain('测试图片（test\\\\.png）');
+    expect(text).toContain('测试图片（test\\.png）');
+  });
 });
 
 function stateFrom(events: AgentEvent[]): RunState {

@@ -32,6 +32,7 @@ import {
   type RunState,
 } from '../card/run-state';
 import { renderText } from '../card/text-renderer';
+import { projectRunContent } from '../card/run-content';
 import {
   runCommandHandler,
   tryHandleCommand,
@@ -76,6 +77,7 @@ import { addWorkingReaction, removeReaction } from './reaction';
 import { fetchKnownChats } from './lark-info';
 import type { AppPaths } from '../config/app-paths';
 import { sendConnectionNavigation } from './connection-navigation';
+import { sendHistoryResources } from './history-media';
 
 const DEBOUNCE_MS = 600;
 const STREAM_TERMINAL_GRACE_MS = 3000;
@@ -1021,6 +1023,31 @@ async function runAgentBatch(deps: RunBatchDeps): Promise<void> {
         await channel.send(chatId, { markdown: body }, sendOpts);
       }
       completedState = finalState;
+    }
+
+    if (
+      completedState &&
+      completedState.terminal !== 'running'
+    ) {
+      const resources = projectRunContent(completedState).resources;
+      if (resources.length > 0) {
+        const report = await sendHistoryResources(
+          channel,
+          chatId,
+          lastMsg.messageId,
+          cwd,
+          resources,
+        );
+        if (report.skipped || report.failed) {
+          await channel.send(
+            chatId,
+            {
+              markdown: `⚠️ 实时回复附件：已发送 ${report.sent} 个，跳过 ${report.skipped} 个，失败 ${report.failed} 个。`,
+            },
+            sendOpts,
+          );
+        }
+      }
     }
 
     if (

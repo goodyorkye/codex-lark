@@ -8,6 +8,7 @@ import type { AgentAdapter } from '../agent/types';
 import type { ActiveRuns } from '../bot/active-runs';
 import type { CompositionStore, CompositionSnapshot } from '../bot/composition-store';
 import type { PendingQueue } from '../bot/pending-queue';
+import { sendHistoryResources } from '../bot/history-media';
 import {
   accountCurrentCard,
   accountFailureCard,
@@ -70,9 +71,10 @@ import {
   reasoningEffortsCard,
   projectsCard,
   recentTasksCard,
-  latestTurnCard,
-  taskDetailCard,
+  latestTurnPresentation,
+  taskDetailPresentation,
   tasksCard,
+  type CodexHistoryPresentation,
   type CodexProjectSummary,
 } from '../card/codex-cards';
 import {
@@ -429,7 +431,7 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
       return;
     }
     const thread = await ctx.agent.readThread(currentThreadId);
-    await sendCodexCard(ctx, latestTurnCard(thread));
+    await sendCodexHistory(ctx, latestTurnPresentation(thread), thread.cwd);
     return;
   }
   if (!threadId || !ctx.agent.readThread) {
@@ -438,7 +440,7 @@ async function handleTask(args: string, ctx: CommandContext): Promise<void> {
   }
   const thread = await ctx.agent.readThread(threadId);
   if (action === 'show') {
-    await sendCodexCard(ctx, taskDetailCard(thread));
+    await sendCodexHistory(ctx, taskDetailPresentation(thread), thread.cwd);
     return;
   }
   if (action !== 'use') {
@@ -636,6 +638,28 @@ async function sendCodexCard(ctx: CommandContext, card: object): Promise<void> {
     { card },
     { replyTo: ctx.msg.messageId },
   );
+}
+
+async function sendCodexHistory(
+  ctx: CommandContext,
+  history: CodexHistoryPresentation,
+  cwd: string,
+): Promise<void> {
+  await sendCodexCard(ctx, history.card);
+  if (history.resources.length === 0) return;
+  const report = await sendHistoryResources(
+    ctx.channel,
+    ctx.msg.chatId,
+    ctx.msg.messageId,
+    cwd,
+    history.resources,
+  );
+  if (report.skipped === 0 && report.failed === 0) return;
+  const reasons = [
+    report.skipped ? `${report.skipped} 个附件因路径、大小或数量限制未发送` : '',
+    report.failed ? `${report.failed} 个附件上传失败` : '',
+  ].filter(Boolean).join('；');
+  await reply(ctx, `⚠️ ${reasons}。文字记录仍已完整显示。`);
 }
 
 async function handleModel(args: string, ctx: CommandContext): Promise<void> {
