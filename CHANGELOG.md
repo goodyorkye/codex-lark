@@ -4,6 +4,30 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-01
+
+### Added
+
+- Add `codex-lark notify` for pushing completed task results, Markdown, images, audio, video, and files directly to the configured Feishu/Lark recipient.
+- Add the `codex-lark-notify` Codex skill and install it automatically as a managed user skill under `~/.agents/skills`.
+- Add `codex-lark skill install`, `status`, and `remove` commands with user-change protection.
+
+### Fixed
+
+- Allow history resource delivery without a reply target so direct notifications can reuse the native media delivery pipeline.
+
+## [0.2.3] - 2026-09-01
+
+### Fixed
+
+- Deliver generated images and other Codex turn resources as native Feishu/Lark messages without leaving invalid resource elements in streaming cards.
+
+## [0.2.2] - 2026-08-24
+
+### Changed
+
+- Resume existing ChatGPT or Codex Desktop tasks from Feishu/Lark while keeping Desktop-owned task history and routing.
+
 ## [0.2.1] - 2026-08-13
 
 ### Changed
