@@ -86,6 +86,29 @@ npx -y codex-lark@latest
 
 按 `Ctrl+C` 可以停止程序；关闭终端也会断开手机连接，但不会删除 Codex 任务或飞书配置。
 
+## 主动推送任务结果
+
+完成首次扫码配置后，可以从终端把任务结果直接推送给当前 profile 的飞书应用所有者。这个命令通过飞书 REST API 直接发送，不要求 bridge 正在运行：
+
+```bash
+codex-lark notify "构建和测试均已通过。" \
+  --title "任务完成"
+```
+
+发送 Markdown 结果及产物：
+
+```bash
+codex-lark notify \
+  --title "报告生成完成" \
+  --markdown-file /absolute/path/result.md \
+  --cwd /absolute/path/to/workspace \
+  --file /absolute/path/report.pdf
+```
+
+可以重复使用 `--file`。Markdown 中引用的本地图片、音频、视频和文件也会作为飞书原生资源消息发送。使用 `--to <open_id|chat_id>` 可以显式指定其他接收人或群聊；未指定时默认发送给应用所有者。
+
+`codex-lark` 启动时会把内置的 [`codex-lark-notify` 技能](skills/codex-lark-notify/SKILL.md)自动安装到 `~/.agents/skills`，Codex 随后就能在用户明确提出“完成后推送给我”“把结果发到飞书”等要求时调用该命令。自动更新不会覆盖用户修改或同名的非托管技能；可以用 `codex-lark skill status` 查看状态，或用 `codex-lark skill install` 手动重试。技能只负责即时发送，不包含离线队列或自动完成 hook。
+
 ## 为什么用起来没有压力
 
 - **沿用 Desktop 上下文**：手机和电脑继续的是同一项工作。

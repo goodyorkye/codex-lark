@@ -26,4 +26,24 @@ describe('CLI command registration', () => {
     const appSecretOptions = source.match(/--app-secret <secret>/g) ?? [];
     expect(appSecretOptions.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('registers the notify command', async () => {
+    const source = await readFile(join(process.cwd(), 'src', 'cli', 'index.ts'), 'utf8');
+
+    expect(source).toMatch(/\.command\(['"]notify \[message\]['"]\)/);
+    expect(source).toContain('runNotify');
+    expect(source).toContain('--markdown-file <path>');
+    expect(source).toContain('--file <path>');
+    expect(source).toContain('optsWithGlobals');
+  });
+
+  it('installs and manages the bundled Codex notification skill', async () => {
+    const source = await readFile(join(process.cwd(), 'src', 'cli', 'index.ts'), 'utf8');
+
+    expect(source).toContain('installCodexLarkNotifySkillOnStartup');
+    expect(source).toMatch(/\.command\(['"]skill['"]\)/);
+    expect(source).toMatch(/\.command\(['"]install['"]\)/);
+    expect(source).toMatch(/\.command\(['"]status['"]\)/);
+    expect(source).toMatch(/\.command\(['"]remove['"]\)/);
+  });
 });

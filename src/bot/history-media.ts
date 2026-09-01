@@ -24,7 +24,7 @@ export interface HistoryMediaReport {
 export async function sendHistoryResources(
   channel: LarkChannel,
   recipientId: string,
-  replyTo: string,
+  replyTo: string | undefined,
   cwd: string,
   resources: readonly HistoryResource[],
 ): Promise<HistoryMediaReport> {
@@ -102,20 +102,21 @@ async function materializeResource(
 async function sendResource(
   channel: LarkChannel,
   recipientId: string,
-  replyTo: string,
+  replyTo: string | undefined,
   resource: HistoryResource,
   source: string | Buffer,
 ): Promise<void> {
   const fileName = resourceFileName(resource);
   const preferred = preferredSendInput(resource, source, fileName);
+  const options = replyTo ? { replyTo } : undefined;
   try {
-    await channel.send(recipientId, preferred, { replyTo });
+    await channel.send(recipientId, preferred, options);
   } catch (error) {
     if ('file' in preferred) throw error;
     // Preview formats are stricter than generic files (for example Feishu
     // audio expects Opus and video expects MP4). Preserve delivery by falling
     // back to a normal file message when native media upload is rejected.
-    await channel.send(recipientId, { file: { source, fileName } }, { replyTo });
+    await channel.send(recipientId, { file: { source, fileName } }, options);
   }
 }
 

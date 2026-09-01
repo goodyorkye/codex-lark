@@ -2,6 +2,13 @@ import { Command } from 'commander';
 import pkg from '../../package.json';
 import { formatAgentPreflightDiagnostic, getAgentPreflightDiagnostic } from '../agent/preflight';
 import { runMigrate } from './commands/migrate';
+import { runNotify } from './commands/notify';
+import {
+  installCodexLarkNotifySkillOnStartup,
+  runSkillInstall,
+  runSkillRemove,
+  runSkillStatus,
+} from './commands/skill';
 import { runKillCli, runPs } from './commands/ps';
 import {
   runSecretsGet,
@@ -59,6 +66,69 @@ program
   .option('--agent <kind>', 'agent kind for legacy v1 profile migration (claude or codex)')
   .action(async (opts: { config?: string; profile?: string; agent?: string }) => {
     await runMigrate(opts);
+  });
+
+program
+  .command('notify [message]')
+  .description('Push a completed task result to Feishu/Lark')
+  .option('--profile <name>', 'profile name (defaults to the active profile)')
+  .option('--to <id>', 'recipient open_id or chat_id (defaults to the app owner)')
+  .option('--title <title>', 'notification title')
+  .option('--markdown-file <path>', 'read notification Markdown from a file')
+  .option('--file <path>', 'attach a local file; repeat for multiple files', collectOption, [])
+  .option('--cwd <path>', 'workspace root for resolving local Markdown resources')
+  .option('--stdin', 'read notification Markdown from stdin')
+  .option('--json', 'print the result as JSON')
+  .action(async (
+    message: string | undefined,
+    opts: {
+      profile?: string;
+      to?: string;
+      title?: string;
+      markdownFile?: string;
+      file?: string[];
+      cwd?: string;
+      stdin?: boolean;
+      json?: boolean;
+    },
+    command: Command,
+  ) => {
+    const withGlobals = command.optsWithGlobals() as { profile?: string };
+    await runNotify(message, {
+      profile: opts.profile ?? withGlobals.profile,
+      to: opts.to,
+      title: opts.title,
+      markdownFile: opts.markdownFile,
+      files: opts.file,
+      cwd: opts.cwd,
+      stdin: opts.stdin,
+      json: opts.json,
+    });
+  });
+
+const skill = program
+  .command('skill')
+  .description('Manage the bundled Codex notification skill');
+
+skill
+  .command('install')
+  .description('Install or safely update the bundled Codex notification skill')
+  .action(async () => {
+    await runSkillInstall();
+  });
+
+skill
+  .command('status')
+  .description('Show the bundled Codex notification skill status')
+  .action(async () => {
+    await runSkillStatus();
+  });
+
+skill
+  .command('remove')
+  .description('Remove the skill when it is still managed and unmodified')
+  .action(async () => {
+    await runSkillRemove();
   });
 
 const profile = program
@@ -187,7 +257,12 @@ interface ForegroundOptions {
   tenant?: string;
 }
 
+function collectOption(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
 async function runForeground(opts: ForegroundOptions): Promise<void> {
+  await installCodexLarkNotifySkillOnStartup();
   const ui = new TerminalUi();
   ui.start();
   try {

@@ -86,6 +86,29 @@ Keep the terminal open, then in Feishu/Lark:
 
 Press `Ctrl+C` to stop. Closing the terminal also disconnects the phone, but it does not delete your Codex tasks or Feishu/Lark setup.
 
+## Push completed task results
+
+After the initial QR setup, you can push a completed task result directly to the Feishu/Lark application owner for the selected profile. This command sends through the REST API and does not require the bridge to be running:
+
+```bash
+codex-lark notify "The build and tests passed." \
+  --title "Task complete"
+```
+
+Send a Markdown result and output artifacts:
+
+```bash
+codex-lark notify \
+  --title "Report ready" \
+  --markdown-file /absolute/path/result.md \
+  --cwd /absolute/path/to/workspace \
+  --file /absolute/path/report.pdf
+```
+
+Repeat `--file` for multiple artifacts. Local images, audio, video, and files referenced by the Markdown are also delivered as native Feishu/Lark resource messages. Use `--to <open_id|chat_id>` to select another recipient or chat; otherwise the application owner is used.
+
+When `codex-lark` starts, it automatically installs the bundled [`codex-lark-notify` skill](skills/codex-lark-notify/SKILL.md) into `~/.agents/skills`. Codex can then invoke this command when the user explicitly asks for a completion push or a Feishu/Lark delivery. Automatic updates preserve user edits and same-name skills that are not managed by codex-lark. Use `codex-lark skill status` to inspect it or `codex-lark skill install` to retry manually. The skill performs immediate delivery only; it does not add an offline queue or an automatic completion hook.
+
 ## Why it feels lightweight
 
 - **Your Desktop context stays with you:** phone and computer continue the same work.
