@@ -29,6 +29,16 @@ export interface CodexThread {
   [key: string]: unknown;
 }
 
+export interface CodexProject {
+  id: string;
+  name: string;
+  roots: Array<{ path: string }>;
+  metadata?: Record<string, string>;
+  position?: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export interface CodexTurn {
   id: string;
   status?: string;

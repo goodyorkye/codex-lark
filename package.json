@@ -1,6 +1,6 @@
 {
   "name": "codex-lark",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Continue Codex tasks from ChatGPT or Codex Desktop in Feishu/Lark",
   "type": "module",
   "packageManager": "pnpm@10.33.0",

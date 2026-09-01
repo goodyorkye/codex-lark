@@ -5,6 +5,7 @@ import type {
   ApprovalDecision,
   ApprovalRequest,
   CodexModel,
+  CodexProject,
   CodexThread,
   JsonRpcId,
   JsonRpcMessage,
@@ -37,6 +38,7 @@ export interface ThreadListOptions {
 
 export interface StartThreadOptions {
   cwd: string;
+  projectId?: string;
   model?: string;
   reasoningEffort?: string;
   approvalPolicy?: string;
@@ -176,6 +178,16 @@ export class CodexAppServerClient extends EventEmitter {
     });
   }
 
+  async listProjects(options: { cursor?: string | null; limit?: number } = {}): Promise<{
+    data: CodexProject[];
+    nextCursor: string | null;
+  }> {
+    return this.request('project/list', {
+      cursor: options.cursor ?? null,
+      limit: options.limit ?? 50,
+    });
+  }
+
   async readThread(threadId: string): Promise<CodexThread> {
     const result = await this.request<{ thread: CodexThread }>('thread/read', {
       threadId,
@@ -187,12 +199,17 @@ export class CodexAppServerClient extends EventEmitter {
   async startThread(options: StartThreadOptions): Promise<CodexThread> {
     const result = await this.request<{ thread: CodexThread }>('thread/start', {
       cwd: options.cwd,
+      ...(options.projectId ? { projectId: options.projectId } : {}),
       ...(options.model ? { model: options.model } : {}),
       ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.approvalPolicy ? { approvalPolicy: options.approvalPolicy } : {}),
       ...(options.sandbox ? { sandbox: options.sandbox } : {}),
     });
     return result.thread;
+  }
+
+  async updateThreadProject(threadId: string, projectId: string): Promise<void> {
+    await this.request('thread/metadata/update', { threadId, projectId });
   }
 
   async resumeThread(threadId: string, options: Omit<StartThreadOptions, 'cwd'> & { cwd?: string } = {}): Promise<CodexThread> {

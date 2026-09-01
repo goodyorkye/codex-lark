@@ -7,6 +7,7 @@ import { CodexAppServerClient } from '../../../src/codex/app-server/client';
 import type { ApprovalRequest } from '../../../src/codex/app-server/protocol';
 import {
   CodexAppServerAdapter,
+  resolveDesktopProjectId,
   resumeThreadWithDesktopHandoff,
 } from '../../../src/agent/codex/app-server-adapter';
 import type { AgentEvent } from '../../../src/agent/types';
@@ -33,7 +34,8 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
   });
 
   it('initializes, lists desktop tasks/models, and resolves approvals over JSONL', async () => {
-    const binary = await fakeAppServer();
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-client-log-')), 'requests.jsonl');
+    const binary = await fakeAppServer(requestLog);
     const client = new CodexAppServerClient({
       binaryPath: binary,
       env: { ...process.env, CODEX_LARK_DESKTOP_IPC: '0' },
@@ -42,6 +44,9 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     await client.start();
     await expect(client.listThreads()).resolves.toMatchObject({
       data: [{ id: 'thread-1', cwd: '/tmp/project' }],
+    });
+    await expect(client.listProjects()).resolves.toMatchObject({
+      data: [{ id: 'project-1', roots: [{ path: '/tmp/project' }] }],
     });
     await expect(client.listModels()).resolves.toEqual([
       expect.objectContaining({ model: 'gpt-test', displayName: 'GPT Test' }),
@@ -57,8 +62,29 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
       title: '文件读取审批',
     });
     await client.resolveApproval(approval.requestId, 'acceptForSession');
+    await client.updateThreadProject('thread-1', 'project-1');
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.find((message) => message.method === 'thread/metadata/update')?.params)
+      .toEqual({ threadId: 'thread-1', projectId: 'project-1' });
     expect(client.pendingApprovals()).toHaveLength(0);
     await client.stop();
+  });
+
+  it('resolves Desktop projects by normalized workspace root across pages', async () => {
+    const listProjects = vi.fn()
+      .mockResolvedValueOnce({
+        data: [{ id: 'other', name: 'other', roots: [{ path: '/tmp/other' }] }],
+        nextCursor: 'next',
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'project-1', name: 'project', roots: [{ path: '/tmp/project/' }] }],
+        nextCursor: null,
+      });
+
+    await expect(resolveDesktopProjectId({ listProjects } as never, '/tmp/project'))
+      .resolves.toBe('project-1');
+    expect(listProjects).toHaveBeenNthCalledWith(1, { cursor: null, limit: 50 });
+    expect(listProjects).toHaveBeenNthCalledWith(2, { cursor: 'next', limit: 50 });
   });
 
   it('sends audio with a visible Desktop history label and localAudio input', async () => {
@@ -144,6 +170,7 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     expect(requests.find((message) => message.method === 'thread/start')?.params).toMatchObject({
       model: 'gpt-test',
       reasoningEffort: 'high',
+      projectId: 'project-1',
     });
     expect(requests.find((message) => message.method === 'thread/name/set')?.params).toEqual({
       threadId: 'thread-1',
@@ -203,9 +230,39 @@ describe.skipIf(process.platform === 'win32')('Codex App Server integration', ()
     ]);
     await adapter.shutdown();
   });
+
+  it('keeps creating tasks when an older App Server does not support projects', async () => {
+    const requestLog = join(await mkdtemp(join(tmpdir(), 'codex-lark-no-project-log-')), 'requests.jsonl');
+    const adapter = new CodexAppServerAdapter({
+      binaryPath: await fakeAppServer(requestLog, false, true),
+      env: {
+        ...process.env,
+        CODEX_LARK_DESKTOP_IPC: '0',
+        CODEX_LARK_DESKTOP_AUTO_FOLLOW: '0',
+      },
+    });
+    const run = adapter.run({
+      runId: 'run-no-project-api',
+      prompt: '<user_input>\n{"text":"hello"}\n</user_input>',
+      cwd: '/tmp/project',
+    });
+    for await (const _event of run.events) {
+      // Drain the run.
+    }
+
+    const requests = (await readFile(requestLog, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    expect(requests.some((message) => message.method === 'project/list')).toBe(true);
+    expect(requests.find((message) => message.method === 'thread/start')?.params)
+      .not.toHaveProperty('projectId');
+    await adapter.shutdown();
+  });
 });
 
-async function fakeAppServer(requestLog?: string, legacyPreview = false): Promise<string> {
+async function fakeAppServer(
+  requestLog?: string,
+  legacyPreview = false,
+  projectListUnavailable = false,
+): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'codex-lark-app-server-'));
   const binary = join(root, 'codex');
   const script = `#!/usr/bin/env node
@@ -219,10 +276,14 @@ rl.on('line', (line) => {
   if (message.method === 'initialize') return send({ id: message.id, result: { userAgent: 'fake' } });
   if (message.method === 'initialized') return;
   if (message.method === 'thread/list') return send({ id: message.id, result: { data: [{ id: 'thread-1', cwd: '/tmp/project', preview: 'hello' }], nextCursor: null } });
+  if (message.method === 'project/list') return send(${projectListUnavailable
+    ? `{ id: message.id, error: { code: -32601, message: 'method not found' } }`
+    : `{ id: message.id, result: { data: [{ id: 'project-1', name: 'project', roots: [{ path: '/tmp/project' }] }], nextCursor: null } }`});
   if (message.method === 'thread/read') return send({ id: message.id, result: { thread: { id: message.params.threadId, cwd: '/tmp/project', turns: [], ${legacyPreview ? `preview: '<bridge_context>\\n{}\\n</bridge_context>\\n\\n<user_input>\\n{"text":"你好"}\\n</user_input>', name: null,` : ''} } } });
   if (message.method === 'model/list') return send({ id: message.id, result: { data: [{ id: 'gpt-test', model: 'gpt-test', displayName: 'GPT Test', isDefault: true }] } });
   if (message.method === 'thread/start' || message.method === 'thread/resume') return send({ id: message.id, result: { thread: { id: 'thread-1', cwd: message.params.cwd || '/tmp/project' } } });
   if (message.method === 'thread/name/set') return send({ id: message.id, result: {} });
+  if (message.method === 'thread/metadata/update') return send({ id: message.id, result: {} });
   if (message.method === 'turn/start') {
     send({ id: message.id, result: { turn: { id: 'turn-1', status: 'inProgress' } } });
     send({ id: 900, method: 'item/fileRead/requestApproval', params: { threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', grantRoot: '/tmp/voice.opus', reason: 'read audio' } });

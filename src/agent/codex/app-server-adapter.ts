@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import type { AgentAdapter, AgentEvent, AgentRun, AgentRunOptions } from '../types';
 import { AgentPreflightError, type AgentAvailability } from '../preflight';
 import { CodexAppServerClient } from '../../codex/app-server/client';
@@ -119,6 +120,10 @@ export class CodexAppServerAdapter implements AgentAdapter {
           ? await shouldReplaceLegacyBridgeThread(client, options.threadId)
           : false;
         const isNewThread = !options.threadId || replaceLegacyThread;
+        const newThreadCwd = isNewThread ? requiredCwd(options) : undefined;
+        const projectId = newThreadCwd
+          ? await resolveDesktopProjectId(client, newThreadCwd).catch(() => undefined)
+          : undefined;
         const thread = options.threadId && !replaceLegacyThread
           ? await resumeThreadWithDesktopHandoff(client, options.threadId, {
               cwd: options.cwd,
@@ -128,7 +133,8 @@ export class CodexAppServerAdapter implements AgentAdapter {
               sandbox: options.sandbox,
             })
           : await client.startThread({
-              cwd: requiredCwd(options),
+              cwd: newThreadCwd!,
+              projectId,
               model: options.model,
               reasoningEffort: options.reasoningEffort,
               approvalPolicy: approvalPolicyFor(options),
@@ -315,6 +321,29 @@ export class CodexAppServerAdapter implements AgentAdapter {
       if (this.clientStopPromise === stopPromise) this.clientStopPromise = undefined;
     }
   }
+}
+
+export async function resolveDesktopProjectId(
+  client: Pick<CodexAppServerClient, 'listProjects'>,
+  cwd: string,
+  platform: NodeJS.Platform = process.platform,
+): Promise<string | undefined> {
+  const expected = comparablePath(cwd, platform);
+  let cursor: string | null = null;
+  do {
+    const page = await client.listProjects({ cursor, limit: 50 });
+    const match = page.data.find((project) => project.roots.some(
+      (root) => comparablePath(root.path, platform) === expected,
+    ));
+    if (match) return match.id;
+    cursor = page.nextCursor;
+  } while (cursor);
+  return undefined;
+}
+
+function comparablePath(path: string, platform: NodeJS.Platform): string {
+  const normalized = resolve(path);
+  return platform === 'win32' ? normalized.toLocaleLowerCase('en-US') : normalized;
 }
 
 export async function resumeThreadWithDesktopHandoff(

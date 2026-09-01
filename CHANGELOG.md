@@ -4,6 +4,12 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-01
+
+### Fixed
+
+- Bind new Feishu/Lark-created Codex threads to the matching Desktop project so they appear in that project's conversation list.
+
 ## [0.2.5] - 2026-09-01
 
 ### Added
