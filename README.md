@@ -91,14 +91,14 @@ npx -y codex-lark@latest
 完成首次扫码配置后，可以从终端把任务结果直接推送给当前 profile 的飞书应用所有者。默认消息是一张结果卡片，显示推送内容、profile、项目和 Codex 会话来源。发送本身通过飞书 REST API 完成，不要求 bridge 正在运行：
 
 ```bash
-codex-lark notify "构建和测试均已通过。" \
+npx --yes codex-lark@latest notify "构建和测试均已通过。" \
   --title "任务完成"
 ```
 
 发送 Markdown 结果及产物：
 
 ```bash
-codex-lark notify \
+npx --yes codex-lark@latest notify \
   --title "报告生成完成" \
   --markdown-file /absolute/path/result.md \
   --cwd /absolute/path/to/workspace \

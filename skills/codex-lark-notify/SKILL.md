@@ -7,10 +7,10 @@ description: Push a completed Codex task result and requested output files to th
 
 Finish and verify the requested work before sending its result. The user's request to push or notify authorizes this one outbound notification; it does not authorize unrelated messages or recipients.
 
-Use `codex-lark notify` for delivery:
+Use the npm-hosted CLI for delivery so the skill does not depend on a globally installed `codex-lark` executable:
 
 ```bash
-codex-lark notify "任务已经完成。" --title "任务完成"
+npx --yes codex-lark@latest notify "任务已经完成。" --title "任务完成"
 ```
 
 The default delivery is an interactive result card. In a Codex task, the command automatically reads `CODEX_THREAD_ID` and the current working directory, so the card identifies the source project and thread and provides actions to continue that thread or view its details. Do not add `--thread` or `--cwd` when the automatically detected context is correct. Card actions require the codex-lark bridge to be running when the user clicks them; the initial delivery does not.
@@ -20,7 +20,7 @@ Preserve Markdown line breaks as real newline characters. Never put the two lite
 Prefer an existing Markdown result when the completed task produced one:
 
 ```bash
-codex-lark notify \
+npx --yes codex-lark@latest notify \
   --title "任务完成" \
   --markdown-file /absolute/path/result.md \
   --cwd /absolute/path/to/workspace \

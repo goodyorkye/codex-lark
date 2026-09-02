@@ -17,6 +17,13 @@ afterEach(async () => {
 });
 
 describe('codex-lark-notify managed skill', () => {
+  it('invokes notify through npx without requiring a global executable', async () => {
+    const skill = await readFile(join(process.cwd(), 'skills', CODEX_LARK_NOTIFY_SKILL, 'SKILL.md'), 'utf8');
+
+    expect(skill).toContain('npx --yes codex-lark@latest notify');
+    expect(skill).not.toMatch(/^codex-lark notify/m);
+  });
+
   it('installs a missing skill and recognizes the managed copy', async () => {
     const fixture = await createFixture('first version');
 

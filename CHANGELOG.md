@@ -4,6 +4,12 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-09-02
+
+### Changed
+
+- Run the managed `codex-lark-notify` skill through `npx codex-lark@latest` so notifications do not require a global CLI installation.
+
 ## [0.2.6] - 2026-09-01
 
 ### Fixed
