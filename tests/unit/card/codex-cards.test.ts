@@ -294,13 +294,13 @@ describe('Codex navigation cards', () => {
 
   it('shows only the focused Codex phone remote command surface', () => {
     const help = JSON.stringify(codexRemoteHelpCard());
-    for (const command of ['/projects', '/tasks', '/new', '/models', '/compose', '/stop', '/status', '/help']) {
+    for (const command of ['/projects', '/tasks', '/new', '/models', '/compose', '/stop', '/reset', '/reconnect', '/reconnect --wait', '/status', '/help']) {
       expect(help).toContain(command);
     }
     for (const internal of ['/account', '/config', '/ps', '/exit', '/doctor', '/invite', '/remove']) {
       expect(help).not.toContain(internal);
     }
-    for (const legacy of ['/reset', '/resume', '/cd', '/ws']) {
+    for (const legacy of ['/resume', '/cd', '/ws']) {
       expect(help).not.toContain(legacy);
     }
   });

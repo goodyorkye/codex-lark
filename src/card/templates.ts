@@ -178,7 +178,7 @@ export function helpCard(agentName = 'Agent'): object {
       [
         '**命令列表**',
         '',
-        '- `/new` `/reset` — 清空当前 chat 的会话',
+        '- `/new` `/reset` — 清空当前 chat 的会话（不重启 agent 运行时）',
         '- `/new chat [name]` — 新建群+新会话，自动拉你进群',
         '- `/resume [N]` — 列出并恢复历史会话（最多 N 条）',
         '- `/cd <path>` — 切换工作目录（会重置 session）',
@@ -192,7 +192,8 @@ export function helpCard(agentName = 'Agent'): object {
         '- `/timeout comment:<scopeHash> N` — 管理员设置云文档评论任务探活',
         '- `/ps` — 列出本机所有 bot,标识当前正在回复的那个',
         '- `/exit <id|#>` — 关掉指定 bot(用 `/ps` 看 id/序号)',
-        '- `/reconnect` — 强制重连 WebSocket(网络抖动后 bot 没反应时用)',
+        '- `/reconnect` — 停止当前运行，软重启飞书连接和 agent 运行时',
+        '- `/reconnect --wait` — 等当前运行结束后再软重启',
         `- \`/doctor [描述]\` — 把日志和描述交给 ${escapedAgentName} 自助诊断`,
         '- `/help` — 本帮助',
         '',
