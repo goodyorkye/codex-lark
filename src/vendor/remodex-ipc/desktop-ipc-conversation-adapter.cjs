@@ -12,6 +12,7 @@ const {
   hasVisiblePlanUpdate,
   isContextualUserText,
   isUserRoleItem: isUserMessageItem,
+  normalizeInputEntriesForDesktop,
   normalizeToken,
   readString,
   requestIdKey,
@@ -764,7 +765,9 @@ function extractUserText(entries) {
 }
 
 function sanitizeUserInputEntries(entries) {
-  return sanitizeSharedUserInputEntries(entries).map(cloneJSON);
+  return normalizeInputEntriesForDesktop(
+    sanitizeSharedUserInputEntries(entries).map(cloneJSON)
+  );
 }
 
 function sanitizeUserMessageItem(item) {
@@ -887,14 +890,20 @@ function normalizeTurnInitialPrompt(turn) {
 function userMessageContentFromTurnInput(entry) {
   if (typeof entry === "string") {
     const text = readString(entry);
-    return text ? { type: "text", text } : null;
+    return text ? { type: "text", text, text_elements: [] } : null;
   }
   if (!entry || typeof entry !== "object") {
     return null;
   }
   const type = normalizeToken(entry.type);
   if (type === "inputtext" || type === "text") {
-    return { type: "text", text: readString(entry.text) };
+    return {
+      type: "text",
+      text: readString(entry.text),
+      text_elements: Array.isArray(entry.text_elements)
+        ? cloneJSON(entry.text_elements)
+        : [],
+    };
   }
   return cloneJSON(entry);
 }

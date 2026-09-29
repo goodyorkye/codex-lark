@@ -4,6 +4,13 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-09-29
+
+### Fixed
+
+- Discover the Codex executable in the new ChatGPT Desktop `Resources/codex-cli/bin` layout and automatically repair stale Desktop-owned binary paths after an app upgrade.
+- Normalize bridge-owned text inputs for ChatGPT Desktop 26.924 so Feishu/Lark-started turns no longer crash the conversation view until the app is restarted.
+
 ## [0.2.7] - 2026-09-02
 
 ### Changed

@@ -78,8 +78,12 @@ async function findMacDesktopCore() {
     join(homedir(), 'Applications', 'Codex.app'),
   ];
   for (const app of candidates) {
-    const candidate = join(app, 'Contents', 'Resources', 'codex');
-    if (await isRunnableFile(candidate, constants.X_OK)) return candidate;
+    for (const candidate of [
+      join(app, 'Contents', 'Resources', 'codex'),
+      join(app, 'Contents', 'Resources', 'codex-cli', 'bin', 'codex'),
+    ]) {
+      if (await isRunnableFile(candidate, constants.X_OK)) return candidate;
+    }
   }
   return undefined;
 }

@@ -1,9 +1,41 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 import remodexActionFollower from '../../../src/vendor/remodex-ipc/desktop-ipc-action-follower.cjs';
+import remodexConversationAdapter from '../../../src/vendor/remodex-ipc/desktop-ipc-conversation-adapter.cjs';
 import remodexShared from '../../../src/vendor/remodex-ipc/desktop-ipc-shared.cjs';
 
 describe('Desktop IPC action follower transport', () => {
+  it('adds the text_elements array required by current ChatGPT Desktop', () => {
+    expect(remodexShared.normalizeInputEntriesForDesktop([
+      { type: 'text', text: '来自飞书' },
+      { type: 'text', text: '已有标记', text_elements: [{ placeholder: 'x' }] },
+    ])).toEqual([
+      { type: 'text', text: '来自飞书', text_elements: [] },
+      { type: 'text', text: '已有标记', text_elements: [{ placeholder: 'x' }] },
+    ]);
+  });
+
+  it('normalizes hydrated user prompts before publishing Desktop state', () => {
+    const state = remodexConversationAdapter.buildConversationStateFromThread({
+      id: 'thread-desktop',
+      cwd: '/tmp/project',
+      turns: [{
+        id: 'turn-1',
+        status: 'completed',
+        items: [{
+          id: 'user-1',
+          type: 'userMessage',
+          content: [{ type: 'text', text: '来自飞书' }],
+        }],
+      }],
+    });
+
+    expect(state.turns[0].params.input).toEqual([
+      { type: 'text', text: '来自飞书', text_elements: [] },
+    ]);
+    expect(state.turns[0].items).toEqual([]);
+  });
+
   it('uses the ChatGPT Desktop v2 follower turn-start envelope', () => {
     expect(remodexShared.DESKTOP_IPC_METHOD_VERSIONS.get('thread-follower-start-turn')).toBe(2);
     expect(remodexActionFollower.desktopFollowerStartTurnParamsForIpc({

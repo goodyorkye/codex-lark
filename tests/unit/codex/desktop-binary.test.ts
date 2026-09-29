@@ -24,6 +24,53 @@ describe('Codex Desktop binary discovery', () => {
     })).resolves.toEqual({ binaryPath: binary, appPath: app, appName: 'ChatGPT' });
   });
 
+  it('uses the packaged CLI layout from newer ChatGPT.app builds', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'codex-lark-desktop-packaged-cli-'));
+    const app = join(root, 'ChatGPT.app');
+    const binary = join(app, 'Contents', 'Resources', 'codex-cli', 'bin', 'codex');
+    await mkdir(join(app, 'Contents', 'Resources', 'codex-cli', 'bin'), { recursive: true });
+    await writeFile(binary, '#!/bin/sh\nexit 0\n');
+    await chmod(binary, 0o755);
+
+    await expect(discoverDesktopBinary({
+      platform: 'darwin',
+      candidates: [app],
+      env: {},
+    })).resolves.toEqual({ binaryPath: binary, appPath: app, appName: 'ChatGPT' });
+  });
+
+  it('repairs a stale macOS profile path after the Desktop package layout moves', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'codex-lark-desktop-moved-cli-'));
+    const app = join(root, 'ChatGPT.app');
+    const oldBinary = join(app, 'Contents', 'Resources', 'codex');
+    const nextBinary = join(app, 'Contents', 'Resources', 'codex-cli', 'bin', 'codex');
+    await mkdir(join(app, 'Contents', 'Resources', 'codex-cli', 'bin'), { recursive: true });
+    await writeFile(nextBinary, '#!/bin/sh\nexit 0\n');
+    await chmod(nextBinary, 0o755);
+
+    await expect(resolveDesktopBinaryForLaunch(oldBinary, {
+      platform: 'darwin',
+      candidates: [app],
+      env: {},
+    })).resolves.toBe(nextBinary);
+  });
+
+  it('does not replace a missing custom macOS binary with a Desktop core', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'codex-lark-desktop-custom-cli-'));
+    const app = join(root, 'ChatGPT.app');
+    const desktopBinary = join(app, 'Contents', 'Resources', 'codex-cli', 'bin', 'codex');
+    const customBinary = join(root, 'custom', 'codex');
+    await mkdir(join(app, 'Contents', 'Resources', 'codex-cli', 'bin'), { recursive: true });
+    await writeFile(desktopBinary, '#!/bin/sh\nexit 0\n');
+    await chmod(desktopBinary, 0o755);
+
+    await expect(resolveDesktopBinaryForLaunch(customBinary, {
+      platform: 'darwin',
+      candidates: [app],
+      env: {},
+    })).resolves.toBe(customBinary);
+  });
+
   it('never falls back to a codex command found on PATH', async () => {
     const root = await mkdtemp(join(tmpdir(), 'codex-lark-no-path-'));
     const pathBinary = join(root, 'codex');

@@ -332,6 +332,39 @@ function sanitizeUserInputEntries(entries) {
   return sanitized;
 }
 
+// ChatGPT Desktop 26.924 reads `text_elements.length` without a fallback on
+// every text input entry. App-server callers may legally omit that field, so
+// normalize bridge-owned conversation snapshots before publishing them over
+// Desktop IPC. Keep image compatibility here too so every snapshot path uses
+// the same Desktop-facing input schema.
+function normalizeInputEntriesForDesktop(input) {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  return input.map((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return entry;
+    }
+    const type = normalizeToken(entry.type);
+    if (type === "text" || type === "inputtext") {
+      return Array.isArray(entry.text_elements)
+        ? entry
+        : { ...entry, text_elements: [] };
+    }
+    if (type === "imageurl") {
+      const url = readString(entry.url)
+        || readString(entry.image_url?.url)
+        || readString(entry.imageUrl?.url)
+        || readString(entry.image_url)
+        || readString(entry.imageUrl);
+      if (url) {
+        return { type: "image", url };
+      }
+    }
+    return entry;
+  });
+}
+
 function sanitizeUserRoleItem(item) {
   if (!isUserRoleItem(item)) {
     return item;
@@ -686,6 +719,7 @@ module.exports = {
   isPlainJSONObject,
   isThreadTurnStateProbeRequest,
   isUserRoleItem,
+  normalizeInputEntriesForDesktop,
   normalizeToken,
   readString,
   readText,

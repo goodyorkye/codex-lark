@@ -1,6 +1,6 @@
 {
   "name": "codex-lark",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Continue Codex tasks from ChatGPT or Codex Desktop in Feishu/Lark",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
@@ -75,7 +75,7 @@
     "overrides": {
       "axios": "^1.18.0",
       "protobufjs": "^7.6.5",
-      "qs": "^6.15.2",
+      "qs": "^6.16.0",
       "ws": "^8.21.0"
     },
     "onlyBuiltDependencies": [

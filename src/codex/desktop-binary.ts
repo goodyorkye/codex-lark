@@ -48,8 +48,8 @@ export async function discoverDesktopBinary(
   if (platform === 'darwin') {
     const candidates = options.candidates ?? desktopAppCandidates(home);
     for (const appPath of candidates) {
-      const binaryPath = join(appPath, 'Contents', 'Resources', 'codex');
-      if (!(await isRunnableFile(binaryPath, platform))) continue;
+      const binaryPath = await findMacDesktopCore(appPath);
+      if (!binaryPath) continue;
       const base = basename(appPath);
       return {
         binaryPath,
@@ -161,13 +161,40 @@ export async function resolveDesktopBinaryForLaunch(
   options: DiscoverDesktopBinaryOptions = {},
 ): Promise<string> {
   const platform = options.platform ?? process.platform;
-  if (platform !== 'win32' || !isWindowsStorePackagePath(binaryPath)) return binaryPath;
-  return (await discoverDesktopBinary({
-    env: options.env,
-    home: options.home,
-    platform,
-    candidates: options.candidates,
-  })).binaryPath;
+  if (platform === 'win32' && isWindowsStorePackagePath(binaryPath)) {
+    return (await discoverDesktopBinary({
+      env: options.env,
+      home: options.home,
+      platform,
+      candidates: options.candidates,
+    })).binaryPath;
+  }
+  if (platform === 'darwin' && !(await isRunnableFile(binaryPath, platform))) {
+    const candidates = options.candidates ?? desktopAppCandidates(options.home ?? homedir());
+    if (candidates.some((appPath) => isPathInside(appPath, binaryPath))) {
+      return (await discoverDesktopBinary({
+        env: options.env,
+        home: options.home,
+        platform,
+        candidates,
+      })).binaryPath;
+    }
+  }
+  return binaryPath;
+}
+
+async function findMacDesktopCore(appPath: string): Promise<string | undefined> {
+  const resources = join(appPath, 'Contents', 'Resources');
+  const preferred = [
+    // ChatGPT/Codex Desktop through 26.917.
+    join(resources, 'codex'),
+    // ChatGPT Desktop 26.924+ packages the CLI and its support files together.
+    join(resources, 'codex-cli', 'bin', 'codex'),
+  ];
+  for (const candidate of preferred) {
+    if (await isRunnableFile(candidate, 'darwin')) return candidate;
+  }
+  return undefined;
 }
 
 export function isWindowsStorePackagePath(path: string): boolean {

@@ -14,6 +14,7 @@ const {
   cloneJSON,
   conversationSnapshotShowsActiveTurn,
   isPlainJSONObject,
+  normalizeInputEntriesForDesktop,
   normalizeToken,
   readString,
   requestIdKey,
@@ -1859,31 +1860,6 @@ function createDisabledDesktopIpcLiveOwner() {
 // Replays just-emitted patches onto the retained broadcast baseline. The
 // baseline is a private copy and patch values are already private clones, so
 // in-place mutation is safe and avoids re-cloning the whole state per flush.
-// Desktop's user-bubble renderer extracts images from input entries shaped
-// {type: "image", url}; runtimes sometimes fall back to the image_url shape,
-// which Desktop would silently skip.
-function normalizeInputEntriesForDesktop(input) {
-  if (!Array.isArray(input)) {
-    return [];
-  }
-  return input.map((entry) => {
-    if (!entry || typeof entry !== "object") {
-      return entry;
-    }
-    if (normalizeToken(entry.type) === "imageurl") {
-      const url = readString(entry.url)
-        || readString(entry.image_url?.url)
-        || readString(entry.imageUrl?.url)
-        || readString(entry.image_url)
-        || readString(entry.imageUrl);
-      if (url) {
-        return { type: "image", url };
-      }
-    }
-    return entry;
-  });
-}
-
 function sanitizeTurnStartParams(params) {
   const sanitized = {};
   for (const [key, value] of Object.entries(params || {})) {
