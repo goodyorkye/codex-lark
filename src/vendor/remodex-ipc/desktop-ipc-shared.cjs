@@ -555,7 +555,17 @@ function writeFrame(socket, payload, callback) {
   const body = Buffer.from(payload, "utf8");
   const header = Buffer.alloc(FRAME_HEADER_BYTES);
   header.writeUInt32LE(body.length, 0);
-  socket.write(Buffer.concat([header, body]), callback);
+  // Keep the header and payload as separate writes. `Buffer.concat` would copy
+  // the entire payload a second time, which is expensive for large Desktop
+  // conversation snapshots. Corking preserves a single batched socket flush
+  // on Node streams without the extra full-frame allocation.
+  socket.cork?.();
+  try {
+    socket.write(header);
+    socket.write(body, callback);
+  } finally {
+    socket.uncork?.();
+  }
 }
 
 // Codex moved its IPC bus into the Codex home directory; older desktop and CLI
@@ -565,34 +575,77 @@ function writeFrame(socket, payload, callback) {
 // sockets — reads the same length-prefixed framing; only the dispatch differs.
 // `onOverflow` owns the connection, so it decides how to drop a bogus peer.
 function createFrameReader({ onFrame, onOverflow }) {
-  let buffer = Buffer.alloc(0);
+  const header = Buffer.allocUnsafe(FRAME_HEADER_BYTES);
+  let headerBytes = 0;
+  let frameLength = 0;
+  let frameBody = null;
+  let frameBytes = 0;
+
+  function resetFrame() {
+    headerBytes = 0;
+    frameLength = 0;
+    frameBody = null;
+    frameBytes = 0;
+  }
+
+  function dispatchFrame(body) {
+    const envelope = safeParseJSON(body.toString("utf8"));
+    if (envelope) {
+      onFrame(envelope);
+    }
+  }
 
   return {
     push(chunk) {
-      buffer = Buffer.concat([buffer, chunk]);
-      while (buffer.length >= FRAME_HEADER_BYTES) {
-        const frameLength = buffer.readUInt32LE(0);
-        if (frameLength > MAX_FRAME_BYTES) {
-          buffer = Buffer.alloc(0);
-          onOverflow?.();
-          return;
+      const incoming = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      let offset = 0;
+
+      while (offset < incoming.length) {
+        if (!frameBody) {
+          const headerRemaining = FRAME_HEADER_BYTES - headerBytes;
+          const headerChunkBytes = Math.min(headerRemaining, incoming.length - offset);
+          incoming.copy(header, headerBytes, offset, offset + headerChunkBytes);
+          headerBytes += headerChunkBytes;
+          offset += headerChunkBytes;
+
+          if (headerBytes < FRAME_HEADER_BYTES) {
+            return;
+          }
+
+          frameLength = header.readUInt32LE(0);
+          headerBytes = 0;
+          if (frameLength > MAX_FRAME_BYTES) {
+            resetFrame();
+            onOverflow?.();
+            return;
+          }
+          if (frameLength === 0) {
+            dispatchFrame(Buffer.alloc(0));
+            continue;
+          }
+          // Allocate exactly once per frame. Each stream chunk is copied into
+          // its final position, so fragmented frames remain O(total bytes)
+          // instead of repeatedly copying the accumulated prefix.
+          frameBody = Buffer.allocUnsafe(frameLength);
         }
-        if (buffer.length < FRAME_HEADER_BYTES + frameLength) {
+
+        const bodyRemaining = frameLength - frameBytes;
+        const bodyChunkBytes = Math.min(bodyRemaining, incoming.length - offset);
+        incoming.copy(frameBody, frameBytes, offset, offset + bodyChunkBytes);
+        frameBytes += bodyChunkBytes;
+        offset += bodyChunkBytes;
+
+        if (frameBytes < frameLength) {
           return;
         }
 
-        const payload = buffer
-          .slice(FRAME_HEADER_BYTES, FRAME_HEADER_BYTES + frameLength)
-          .toString("utf8");
-        buffer = buffer.slice(FRAME_HEADER_BYTES + frameLength);
-        const envelope = safeParseJSON(payload);
-        if (envelope) {
-          onFrame(envelope);
-        }
+        const completedBody = frameBody;
+        resetFrame();
+        dispatchFrame(completedBody);
       }
     },
     reset() {
-      buffer = Buffer.alloc(0);
+      resetFrame();
     },
   };
 }

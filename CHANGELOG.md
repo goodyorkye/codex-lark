@@ -4,6 +4,13 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-11-09
+
+### Fixed
+
+- Read and write large ChatGPT Desktop IPC frames without repeatedly copying the complete accumulated payload, preventing sustained CPU usage and multi-gigabyte memory growth on long conversations.
+- Update transitive HTTP dependencies to patched versions for newly disclosed axios, follow-redirects, and qs vulnerabilities.
+
 ## [0.2.8] - 2026-09-29
 
 ### Fixed
