@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { listDesktopProjects } from '../../../src/codex/desktop-projects';
 
 describe('Codex Desktop project list', () => {
-  it('uses local-projects filtered and ordered by project-order', async () => {
+  it('preserves project-order and appends local projects missing from it', async () => {
     const codexHome = await mkdtemp(join(tmpdir(), 'codex-desktop-projects-'));
     await mkdir(codexHome, { recursive: true });
     await writeFile(join(codexHome, '.codex-global-state.json'), JSON.stringify({
@@ -45,6 +45,13 @@ describe('Codex Desktop project list', () => {
         name: '项目 A',
         cwd: '/tmp/project-a',
         rootPaths: ['/tmp/project-a'],
+        taskCount: 0,
+      },
+      {
+        id: 'orphan',
+        name: 'zh',
+        cwd: '/tmp/zh',
+        rootPaths: ['/tmp/zh'],
         taskCount: 0,
       },
     ]);

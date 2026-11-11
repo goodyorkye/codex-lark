@@ -49,6 +49,7 @@ export interface NotifyDependencies {
   readStdin?: () => Promise<string>;
   print?: (text: string) => void;
   env?: NodeJS.ProcessEnv;
+  now?: () => Date;
 }
 
 export async function runNotify(
@@ -106,6 +107,7 @@ export async function runNotify(
           cwd,
           threadId,
           taskTitle: options.taskTitle,
+          pushedAt: deps.now?.() ?? new Date(),
         }),
       });
   const sendResources = deps.sendResources ?? sendHistoryResources;

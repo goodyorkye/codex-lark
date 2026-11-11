@@ -26,11 +26,16 @@ export async function listDesktopProjects(
 
   const projects = isRecord(raw['local-projects']) ? raw['local-projects'] : {};
   const order = stringArray(raw['project-order']);
+  // During Desktop's legacy-to-App-Server project migration, local-projects can
+  // contain valid (and even selected or pinned) projects that project-order no
+  // longer contains. Preserve the explicit Desktop order, then include those
+  // otherwise hidden projects in their stored insertion order.
+  const projectIds = [...new Set([...order, ...Object.keys(projects)])];
   const threadOrders = isRecord(raw['sidebar-project-thread-orders'])
     ? raw['sidebar-project-thread-orders']
     : {};
 
-  return order.flatMap((id) => {
+  return projectIds.flatMap((id) => {
     const project = projects[id];
     if (!isRecord(project)) return [];
     const rootPaths = stringArray(project.rootPaths);

@@ -25,6 +25,7 @@ describe('Codex navigation cards', () => {
       cwd: '/workspace/demo-project',
       threadId: '019d1234-5678-7000-9000-abcdef123456',
       taskTitle: '发布新版本',
+      pushedAt: new Date('2026-11-09T01:30:45.000Z'),
     }) as { body: { elements: Array<{ content?: string }> } };
     const rendered = JSON.stringify(notification);
 
@@ -43,6 +44,9 @@ describe('Codex navigation cards', () => {
     expect(rendered).toContain('task.use');
     expect(rendered).toContain('task.show');
     expect(rendered).toContain('019d1234-5678-7000-9000-abcdef123456');
+    expect(rendered).toContain('推送时间');
+    expect(collectMarkdownContents(notification)).toMatch(/2026\\-11\\-09 \d{2}:30:45/);
+    expect(rendered).not.toContain('Asia/Shanghai');
   });
 
   it('renders a static notification card without a thread', () => {
@@ -51,9 +55,13 @@ describe('Codex navigation cards', () => {
       markdown: '结果已生成。',
       profile: 'codex',
       cwd: '/workspace/demo',
+      pushedAt: new Date('2026-11-09T01:30:45.000Z'),
     }));
 
     expect(rendered).toContain('未关联 Codex 会话');
+    expect(rendered).toContain('2026\\\\-11\\\\-09');
+    expect(rendered).toContain(':30:45');
+    expect(rendered).not.toContain('Asia/Shanghai');
     expect(rendered).not.toContain('task.use');
     expect(rendered).not.toContain('task.show');
   });

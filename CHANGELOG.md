@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-11-11
+
+### Added
+
+- Show the local system push time in `codex-lark notify` result cards.
+
+### Fixed
+
+- Include valid Desktop projects missing from the legacy `project-order` field so projects remain available from Feishu/Lark while Desktop migrates them to App Server project IDs.
+- Update the Vitest/Vite development toolchain and transitive build dependencies to patched versions for newly disclosed vulnerabilities.
+
 ## [0.2.9] - 2026-11-09
 
 ### Fixed

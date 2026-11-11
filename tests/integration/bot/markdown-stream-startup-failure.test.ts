@@ -1,7 +1,7 @@
 import type { NormalizedMessage } from '@larksuite/channel';
 import { realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { createDefaultProfileConfig } from '../../../src/config/profile-schema.js';
 import { log } from '../../../src/core/logger.js';
 import { SessionStore } from '../../../src/session/store.js';
@@ -50,8 +50,8 @@ interface FakeLarkChannel {
           get: ReturnType<typeof vi.fn>;
         };
         messageReaction: {
-          create: ReturnType<typeof vi.fn>;
-          delete: ReturnType<typeof vi.fn>;
+          create: Mock<(request: unknown) => Promise<{ data: { reaction_id: string } }>>;
+          delete: Mock<(request: unknown) => Promise<Record<string, never>>>;
         };
       };
     };
@@ -313,8 +313,9 @@ function createFakeLarkChannel(options: {
             get: vi.fn(async () => ({ data: { items: [] } })),
           },
           messageReaction: {
-            create: vi.fn(options.reactionCreate ?? (async () => ({ data: { reaction_id: 'reaction_1' } }))),
-            delete: vi.fn(async () => ({})),
+            create: vi.fn(async (_request: unknown) =>
+              options.reactionCreate?.() ?? { data: { reaction_id: 'reaction_1' } }),
+            delete: vi.fn(async (_request: unknown) => ({})),
           },
         },
       },

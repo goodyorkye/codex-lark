@@ -31,6 +31,7 @@ describe('codex-lark notify', () => {
       createChannel: () => channel as unknown as LarkChannel,
       print: (text) => output.push(text),
       env: { CODEX_THREAD_ID: 'thread-1234567890' },
+      now: () => new Date('2026-11-09T01:30:45.000Z'),
     });
 
     expect(channel.sent).toHaveLength(1);
@@ -44,6 +45,10 @@ describe('codex-lark notify', () => {
     expect(rendered).toContain('task.use');
     expect(rendered).toContain('task.show');
     expect(rendered).toContain('thread-1234567890');
+    expect(rendered).toContain('推送时间');
+    expect(rendered).toContain('2026\\\\-11\\\\-09');
+    expect(rendered).toContain(':30:45');
+    expect(rendered).not.toContain('Asia/Shanghai');
     expect(result).toMatchObject({
       profile: 'codex',
       recipient: 'owner',
