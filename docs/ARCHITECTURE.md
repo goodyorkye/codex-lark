@@ -48,6 +48,16 @@ The channel transport handles QR registration, long connection, message normaliz
 
 The npm executable starts in the foreground. `src/cli/terminal-ui.ts` reports Desktop discovery and connection progress, while `src/bot/wizard.ts` renders the first-run QR code directly in the terminal. No browser, local web server, Electron runtime, or separately installed Codex CLI is involved. Closing the terminal or pressing Ctrl+C stops the bridge.
 
+### Optional Dots backend
+
+`src/dots/` provides an opt-in original-Dot connection behind the existing Feishu transport. The installed Desktop core supplies the current ChatGPT login through read-only `getAuthStatus`; a separate core with Desktop IPC disabled avoids competing for Codex task ownership. The bridge validates the account, primary Dot and both members of the native private room. Tokens remain in memory and are sent only to the fixed OpenAI HTTPS origin.
+
+Inputs use a serial, source-bound durable queue with stable native request/idempotency IDs. Original image/file bytes are uploaded through the room's native file API; the bridge does not parse documents. Audio is sent directly to the optional Aliyun ASR API, then the transcript and original audio are attached to the native input. Missing credentials are reported before download or queueing. No local speech process, TTS, custom MCP server or Tunnel is involved.
+
+The native room-live HTTPS/SSE and authenticated WebSocket channels supply root-turn identity and completion, including active child work. A prior completed turn or a quiet progress message cannot finalize a new input. After completion and a short consistency window, source-bound native replies and file IDs are forwarded to the original Feishu message, including after returning to Codex. Background updates are excluded. Account changes, interleaved human input and uncertain delivery stop automatic association or resending.
+
+Private atomic `dots/desktop-state.json` stores the queue, text, transcripts, replies and file/resource IDs. Temporary input files are removed, and expiring file URLs and credentials are never persisted. Interrupted preparation can resume; interrupted native/Feishu sends require verification. Feishu ingress acknowledgement is not transactionally coupled to persistence. See [Dots](DOTS.md) for limits, recovery and real-account acceptance.
+
 ## Ownership rules
 
 - The App Server child created by codex-lark owns bridge-started turns.

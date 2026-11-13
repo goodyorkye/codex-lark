@@ -6,6 +6,8 @@
 - pnpm 10
 - macOS 13+ or Windows with the official Desktop app for real integration
 
+The shipped CLI requires Node.js 20.19+ (20.x), or 22.12 and later, because the existing Feishu SDK and terminal prompts load native ES modules from CommonJS. The CLI checks this before loading dependencies. See the official [Node 20.19](https://nodejs.org/en/blog/release/v20.19.0) and [Node 22.12](https://nodejs.org/en/blog/release/v22.12.0) module-loading changes. CI covers the minimum 20.19 runtime and Node 22 across all three operating systems.
+
 ## Checks
 
 ```bash

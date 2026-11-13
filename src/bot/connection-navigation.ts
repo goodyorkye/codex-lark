@@ -1,3 +1,5 @@
+import type { DotsBackend } from '../dots/backend';
+import { dotsCard } from '../dots/card';
 import type { LarkChannel } from '@larksuite/channel';
 import type { AgentAdapter } from '../agent/types';
 import { codexRemoteNavigationCard } from '../card/codex-cards';
@@ -6,6 +8,7 @@ import type { SessionCatalog } from '../session/catalog';
 
 export interface ConnectionNavigationControls {
   botOwnerId?: string;
+  dots?: DotsBackend;
 }
 
 export interface SendConnectionNavigationOptions {
@@ -28,6 +31,11 @@ export async function sendConnectionNavigation(
   if (!ownerOpenId) {
     log.warn('navigation', 'connection-push-skipped', { reason: 'owner-unavailable' });
     return false;
+  }
+
+  if (options.controls.dots?.ownerMode() === 'dots') {
+    await options.channel.send(ownerOpenId, { card: dotsCard(options.controls.dots, undefined, true) });
+    return true;
   }
 
   const latest = options.sessionCatalog?.entries()

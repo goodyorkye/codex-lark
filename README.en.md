@@ -14,7 +14,7 @@ You do not start a second agent on your phone or explain the work again. `codex-
 
 **Scan once in Feishu/Lark to create and connect your personal assistant automatically. That single assistant can manage multiple Codex projects and tasks from ChatGPT / Codex Desktop on your computer.**
 
-It connects specifically to **Codex projects and tasks** in the desktop app—not ordinary ChatGPT chats or ChatGPT Work conversations.
+By default it connects to **Codex projects and tasks** in the desktop app. An existing Dot can be connected in its original conversation through the optional Dots integration described below; ordinary ChatGPT chats are outside the default connection.
 
 **Feishu/Lark uses convenient card buttons throughout.** Recent tasks, projects, models, reasoning effort, and composed input are one tap away—there are no commands or names to memorize.
 
@@ -50,7 +50,7 @@ Projects, tasks, models, and common actions appear as Feishu/Lark cards. You can
 
 You need:
 
-- Node.js 20.12 or later
+- Node.js 20.19+ (20.x), or 22.12 and later
 - A signed-in official ChatGPT or Codex Desktop app
   - macOS: ChatGPT or Codex Desktop
   - Windows: Codex Desktop from Microsoft Store
@@ -85,6 +85,14 @@ Keep the terminal open, then in Feishu/Lark:
 5. When you return to the computer, open the same Codex task in ChatGPT / Codex Desktop and continue.
 
 Press `Ctrl+C` to stop. Closing the terminal also disconnects the phone, but it does not delete your Codex tasks or Feishu/Lark setup.
+
+## Switch to an existing Dot with the same bot (experimental)
+
+The navigation card includes **Switch to Dots / Return to Codex**. One bot serves both destinations while preserving Codex projects, tasks, model selection and in-flight or queued work.
+
+Run `codex-lark dots init` and restart to enable the experimental **original Dot conversation** connection. It reuses the local ChatGPT Desktop login and forwards text, original images, files and audio into the same native room. Replies and generated image/file attachments return to Feishu. No Tunnel, custom MCP plugin or initial web setup is required.
+
+Voice transcription optionally uses an Aliyun Model Studio `DASHSCOPE_API_KEY`; missing configuration produces a Feishu setup reminder. No Python, offline model or separate speech program is needed. codex-lark does not synthesize speech. This feature serves one app-owner private chat and relies on internal client APIs. Live acceptance is complete on macOS; Windows original-Dot testing is still pending. See the [Dots setup and acceptance guide](docs/DOTS.md) (Chinese).
 
 ## Push completed task results
 

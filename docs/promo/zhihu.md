@@ -48,6 +48,6 @@ codex-lark 会找到 ChatGPT / Codex Desktop 内置的 Codex app-server 可执�
 
 - GitHub：[github.com/goodyorkye/codex-lark](https://github.com/goodyorkye/codex-lark)
 - npm：[codex-lark](https://www.npmjs.com/package/codex-lark)
-- MIT 许可证，支持 macOS 和 Windows，需要 Node.js 20.12 及以上版本。
+- MIT 许可证，支持 macOS 和 Windows，需要 Node.js 20.19+（20.x）或 22.12 及以上版本。
 
 项目不隶属于 OpenAI、飞书或字节跳动。欢迎 star、提 issue、贡献代码。

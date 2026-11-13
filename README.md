@@ -14,7 +14,7 @@
 
 **用飞书扫一次码，即可一键创建并绑定专属机器人。只用这一个机器人，就能管理这台电脑上 ChatGPT / Codex Desktop 里的多个 Codex 项目和任务。**
 
-这里连接的是桌面应用里的 **Codex 项目与任务**，不是普通 ChatGPT 聊天或 ChatGPT Work 会话。
+默认连接桌面应用里的 **Codex 项目与任务**。已有 Dot 可通过下方的可选 Dots 功能连接原会话；普通 ChatGPT 聊天不在默认连接范围。
 
 **飞书中采用卡片式按钮操作。** 最近任务、项目、模型、推理强度和组合输入都可以直接点击和切换，不用记命令，也不用反复输入名称。
 
@@ -50,7 +50,7 @@
 
 准备好：
 
-- Node.js 20.12 或更高版本
+- Node.js 20.19+（20.x），或 22.12 及以上版本
 - 已登录的官方 ChatGPT 或 Codex Desktop
   - macOS：ChatGPT 或 Codex Desktop
   - Windows：从 Microsoft Store 安装的 Codex Desktop
@@ -85,6 +85,14 @@ npx -y codex-lark@latest
 5. 需要回到电脑时，打开 ChatGPT / Codex Desktop 中的同一个 Codex 任务继续即可。
 
 按 `Ctrl+C` 可以停止程序；关闭终端也会断开手机连接，但不会删除 Codex 任务或飞书配置。
+
+## 同一个机器人切换到 Dots（实验功能）
+
+导航卡提供“切换到 Dots / 返回 Codex”按钮，共用一个机器人，并保留 Codex 项目、任务和正在执行或排队的工作。
+
+运行 `codex-lark dots init` 后重启，即可试用**原 Dot 会话直连**：复用本机 ChatGPT 客户端登录，文字、图片、文件和原音频进入同一个原会话，答复及生成的图片、文件回传飞书。无需 Tunnel、自定义 MCP 插件或首次网页配置。
+
+语音使用可选的阿里云百炼 `DASHSCOPE_API_KEY` 转写，未配置时会在飞书提示本机配置方式；无需 Python、离线模型或额外语音程序。codex-lark 不生成语音。该实验功能仅供机器人主人私聊，依赖客户端内部接口；当前完成 macOS 原会话验收，Windows 仍需实机验证。启用与恢复步骤见 [Dots 连接指南](docs/DOTS.md)。
 
 ## 主动推送任务结果
 

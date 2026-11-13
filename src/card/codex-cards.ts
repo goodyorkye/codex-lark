@@ -456,6 +456,7 @@ function navigationActions(primaryCommand: 'projects' | 'tasks.recent'): object 
     actionButton(primaryCommand === 'projects' ? '项目' : '最近任务', primaryCommand, 'primary'),
     actionButton('新建', 'new'),
     actionButton('模型', 'models'),
+    actionButton('切换到 Dots', 'dots.use'),
   ]);
 }
 
@@ -468,6 +469,7 @@ function remoteNavigationActions(hasCurrentTask = false): object[] {
     buttonRow([
       actionButton('新建任务', 'new'),
       actionButton('切换模型', 'models'),
+      actionButton('切换到 Dots', 'dots.use'),
     ]),
     buttonRow([
       ...(hasCurrentTask ? [actionButton('最近一轮', 'task.latest')] : []),

@@ -1,4 +1,6 @@
 import dns from 'node:dns';
+import { join } from 'node:path';
+import { loadDotsRuntime } from '../../dots/runtime';
 import os from 'node:os';
 import { createInterface } from 'node:readline';
 import pkg from '../../../package.json';
@@ -215,6 +217,8 @@ export async function runStart(opts: StartOptions): Promise<void> {
           const watchdog = setTimeout(() => forceExit(sig), 8_000);
           watchdog.unref();
           try {
+            await withTimeout(dots?.close() ?? Promise.resolve(), 3_000, 'dots shutdown')
+              .catch(() => log.warn('dots', 'shutdown-timeout'));
             await withTimeout(bridge.disconnect(), 5_000, 'bridge disconnect');
           } catch (err) {
             console.error('[disconnect-failed]', err);
@@ -229,6 +233,7 @@ export async function runStart(opts: StartOptions): Promise<void> {
           process.exit(0);
         };
 
+        const dots = cfg.agentKind === 'codex' ? await loadDotsRuntime(join(appPaths.profileDir, 'dots'), cfg.accounts.app.id) : undefined;
         let controls: Controls;
         const makeControls = (
           currentPaths: AppPaths,
@@ -236,6 +241,7 @@ export async function runStart(opts: StartOptions): Promise<void> {
           currentProfileConfig: ProfileConfig,
         ): Controls => {
           const currentControls: Controls = {
+            dots: dots?.bridge,
             profile: currentPaths.profile,
             profileConfig: currentProfileConfig,
             ownerRefreshState: 'unknown',
@@ -277,6 +283,7 @@ export async function runStart(opts: StartOptions): Promise<void> {
                   throw nextAvailability.error;
                 }
                 const appChanged = next.accounts.app.id !== cfg.accounts.app.id;
+                if (appChanged && dots) throw new Error('Dots is bound to the current Feishu app. Stop the bridge and configure Dots for the new app before changing accounts.');
                 if (appChanged) {
                   nextAppLock = await acquireAppRuntimeLock(
                     nextRuntime.appPaths,
@@ -352,15 +359,21 @@ export async function runStart(opts: StartOptions): Promise<void> {
         controls = makeControls(appPaths, cfg, profileConfig);
 
         opts.onStatus?.('connecting', '正在建立飞书长连接');
-        bridge = await startChannel({
-          cfg,
-          agent,
-          sessions,
-          sessionCatalog,
-          workspaces,
-          controls,
-          appPaths,
-        });
+        await dots?.listen();
+        try {
+          bridge = await startChannel({
+            cfg,
+            agent,
+            sessions,
+            sessionCatalog,
+            workspaces,
+            controls,
+            appPaths,
+          });
+        } catch (error) {
+          await dots?.close();
+          throw error;
+        }
 
         // Backfill the bot's display name into the registry once WS handshake is
         // done — future starts conflicting on this app can show it in the prompt

@@ -34,12 +34,18 @@ importers:
       graceful-fs:
         specifier: ^4.2.11
         version: 4.2.11
+      https-proxy-agent:
+        specifier: ^9.1.0
+        version: 9.1.0
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.3
     devDependencies:
       '@types/cross-spawn':
         specifier: ^6.0.6
@@ -56,6 +62,9 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.6
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(postcss@8.5.32)(typescript@5.9.3)
@@ -605,6 +614,9 @@ packages:
 
   '@types/retry@0.12.5':
     resolution: {integrity: sha512-3xSjTp3v03X/lSQLkczaN9UIEwJMoMCA1+Nb5HfbJEQWogdeQIyVtTvxPXDQjZ5zws8rFQfVfRdz03ARihPJgw==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@vitest/expect@4.1.12':
     resolution: {integrity: sha512-vFlTt+YEu9WBpNjdGayNmlMVzrWPi1+sv853/7t2FU7hpO5gAFBKHzQmkCq5Xjpr+evegF2994LQT3hF3mRlqQ==}
@@ -1661,6 +1673,10 @@ snapshots:
       '@types/node': 22.19.17
 
   '@types/retry@0.12.5': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 22.19.17
 
   '@vitest/expect@4.1.12':
     dependencies:

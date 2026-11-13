@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { runDotsInit, runDotsStatus } from './commands/dots';
 import pkg from '../../package.json';
 import { formatAgentPreflightDiagnostic, getAgentPreflightDiagnostic } from '../agent/preflight';
 import { runMigrate } from './commands/migrate';
@@ -114,6 +115,15 @@ program
       json: opts.json,
     });
   });
+
+const dots = program.command('dots').description('Connect an existing Dot through the same Feishu bot');
+for (const name of ['init', 'status'] as const) {
+  const command = dots.command(name).option('--profile <name>', 'profile name').option('-c, --config <path>', 'config file');
+  command.action(async (opts: { profile?: string; config?: string }, cmd: Command) => {
+    const merged = { ...opts, profile: opts.profile ?? (cmd.optsWithGlobals() as { profile?: string }).profile };
+    await (name === 'init' ? runDotsInit(merged) : runDotsStatus(merged));
+  });
+}
 
 const skill = program
   .command('skill')

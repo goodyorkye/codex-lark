@@ -4,6 +4,24 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-13
+
+### Added
+
+- Connect an existing Dot's original ChatGPT conversation through the same Feishu/Lark bot, with dedicated switch/return buttons that preserve Codex projects, tasks, model selection, composed input and queued work.
+- Forward text, original images and files into the native Dot room, and return the Dot's text and generated image/file attachments to their source Feishu messages, including after switching back to Codex.
+- Transcribe voice input through the optional Aliyun Model Studio API and retain the original audio in the Dot conversation. Missing API keys produce local setup instructions in Feishu before audio is downloaded or forwarded; no local speech runtime or TTS is included.
+- Track the native room's actual turn lifecycle so intermediate progress cannot finalize an input before a later file attachment arrives. Preserve stable request IDs, source deduplication, restart recovery and explicit handling of uncertain delivery or interleaved native input.
+
+### Changed
+
+- Correct the runtime requirement to Node.js 20.19+ (20.x), or 22.12 and later, matching the existing SDK module-loading requirements. Unsupported runtimes now receive a clear startup message instead of an ESM stack trace; CI also covers Node 20.19 on all supported operating systems.
+
+### Notes
+
+- Dots is opt-in and experimental: it relies on internal client messaging APIs. Original-room live acceptance is complete on macOS ChatGPT 26.1106.51428; Windows original-Dot live testing remains pending. Existing Codex functionality remains available on both platforms.
+- Enable with `codex-lark dots init`, restart, then choose **Switch to Dots** in the owner's private chat. No Tunnel, custom MCP plugin, pairing code or initial browser setup is required. See `docs/DOTS.md` for limits, audio configuration and recovery.
+
 ## [0.2.10] - 2026-11-11
 
 ### Added

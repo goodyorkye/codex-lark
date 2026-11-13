@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import type { DotsBackend } from '../dots/backend';
+import { dotsCard } from '../dots/card';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute } from 'node:path';
@@ -106,6 +108,7 @@ import { applyLarkCliIdentityPolicy, hasStructuredLarkCliUserAuth } from '../lar
 import { listDesktopProjects } from '../codex/desktop-projects';
 
 export interface Controls {
+  dots?: DotsBackend;
   profile: string;
   profileConfig: ProfileConfig;
   botOwnerId?: string;
@@ -188,6 +191,8 @@ const AUDIT_SAFE_COMMAND_REPLY = '命令已处理。';
 const RESUME_APPLIED_REPLY = '已完成，请继续发送下一条消息。';
 
 const handlers: Record<string, Handler> = {
+  '/dots': handleDots,
+  '/codex': handleCodex,
   '/new': handleNew,
   '/reset': handleNew,
   '/cd': handleCd,
@@ -258,6 +263,7 @@ export async function tryHandleCommand(ctx: CommandContext): Promise<boolean> {
     await reply(ctx, '❌ 此命令仅管理员可用。');
     return true;
   }
+  if (await guardDotsCommand(cmd, ctx)) return true;
   try {
     await h(args, ctx);
   } catch (err) {
@@ -289,6 +295,7 @@ export async function runCommandHandler(
     // the original admin card in the first place, so this is an edge case.
     return true;
   }
+  if (await guardDotsCommand(`/${name}`, ctx)) return true;
   try {
     await h(args, ctx);
   } catch (err) {
@@ -340,6 +347,52 @@ function expandTilde(p: string): string {
 
 function isAbsoluteOrTilde(p: string): boolean {
   return isAbsolute(p) || p === '~' || p.startsWith('~/');
+}
+
+async function guardDotsCommand(command: string, ctx: CommandContext): Promise<boolean> {
+  if (ctx.controls.dots?.mode(ctx.scope) !== 'dots') return false;
+  ctx.preservePendingAfterCommand = true;
+  if (['/dots', '/codex', '/help', '/status', '/ps', '/exit', '/reconnect', '/doctor'].includes(command)) return false;
+  await reply(ctx, '当前是 Dots。请先点“返回 Codex”，再操作项目或任务。');
+  return true;
+}
+
+async function handleDots(args: string, ctx: CommandContext): Promise<void> {
+  ctx.preservePendingAfterCommand = true;
+  if (ctx.chatMode !== 'p2p' || ctx.msg.senderId !== ctx.controls.botOwnerId) {
+    await reply(ctx, 'Dots 目前仅供机器人主人在私聊中使用。');
+    return;
+  }
+  const bridge = ctx.controls.dots;
+  if (!bridge) { await ctx.channel.send(ctx.msg.chatId, { card: dotsCard() }); return; }
+  const action = args.trim() || 'status';
+  try {
+    if (action === 'disconnect') {
+      await bridge.disconnect(ctx.msg.senderId);
+      await reply(ctx, '已断开 Dots 绑定，返回 Codex。原项目和任务已保留。');
+    } else if (action === 'use' || action === 'connect') {
+      await bridge.select(ctx.scope, 'dots', ctx.msg.senderId, ctx.msg.chatId);
+    } else if (action !== 'status') {
+      await reply(ctx, '用法：/dots connect、/dots status、/dots disconnect；返回 Codex 可点按钮或发送 /codex。'); return;
+    }
+    await ctx.channel.send(ctx.msg.chatId, { card: dotsCard(bridge, ctx.scope) });
+  } catch (error) {
+    await reply(ctx, error instanceof Error ? error.message : 'Dots 操作失败，请检查连接状态。');
+  }
+}
+
+async function handleCodex(_args: string, ctx: CommandContext): Promise<void> {
+  ctx.preservePendingAfterCommand = true;
+  if (ctx.controls.dots) {
+    if (ctx.chatMode !== 'p2p' || ctx.msg.senderId !== ctx.controls.botOwnerId) {
+      await reply(ctx, '此切换仅供机器人主人在私聊中使用。'); return;
+    }
+    await ctx.controls.dots.select(ctx.scope, 'codex', ctx.msg.senderId, ctx.msg.chatId);
+  }
+  const entry = ctx.sessionCatalog && ctx.sessionCatalogIdentity ? ctx.sessionCatalog.activeFor(ctx.sessionCatalogIdentity) : undefined;
+  await ctx.channel.send(ctx.msg.chatId, { card: codexRemoteNavigationCard({
+    cwd: effectiveWorkspaceCwd(ctx), taskTitle: entry?.lastSummary, hasCurrentTask: Boolean(entry?.threadId),
+  }) });
 }
 
 async function handleNew(args: string, ctx: CommandContext): Promise<void> {
@@ -1284,6 +1337,7 @@ async function larkCliStatus(ctx: CommandContext): Promise<'app' | 'user-ready' 
 }
 
 async function handleStatus(_args: string, ctx: CommandContext): Promise<void> {
+  if (ctx.controls.dots?.mode(ctx.scope) === 'dots') { await handleDots('status', ctx); return; }
   const cwd = effectiveWorkspaceCwd(ctx);
   const sess = ctx.sessions.getRaw(ctx.scope);
   const isCodex = ctx.controls.profileConfig.agentKind === 'codex';
@@ -1820,6 +1874,7 @@ function formatDoctorEchoStatus(echoText: string, state: RunState): string {
 }
 
 async function handleHelp(_args: string, ctx: CommandContext): Promise<void> {
+  if (ctx.controls.dots?.mode(ctx.scope) === 'dots') { await handleDots('status', ctx); return; }
   const card = ctx.controls.profileConfig.agentKind === 'codex'
     ? codexRemoteHelpCard()
     : helpCard(ctx.agent.displayName);

@@ -47,7 +47,7 @@ ChatGPT / Codex Desktop 里的 Codex 在电脑上跑任务时，你大概率遇�
 
 - GitHub：[github.com/goodyorkye/codex-lark](https://github.com/goodyorkye/codex-lark)
 - npm：[codex-lark](https://www.npmjs.com/package/codex-lark)
-- MIT 许可证，支持 macOS 和 Windows，需要 Node.js 20.12+
+- MIT 许可证，支持 macOS 和 Windows，需要 Node.js 20.19+（20.x）或 22.12+
 - macOS 支持官方 ChatGPT 或 Codex Desktop；Windows 支持 Microsoft Store 版 Codex Desktop
 
 欢迎 star、提 issue、贡献代码。也感谢 [Lark Channel Bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 和 [Remodex](https://github.com/Emanuele-web04/remodex) 两个参考项目。

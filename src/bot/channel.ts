@@ -430,6 +430,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
     pid: process.pid,
     procId: controls.processId,
   });
+  const detachDots = controls.dots?.attach(channel, () => controls.ownerRefreshState === 'ok' ? controls.botOwnerId : undefined);
   pushConnectionNavigation();
   console.log('正在监听消息。按 Ctrl+C 退出。\n');
 
@@ -449,6 +450,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
   return {
     channel,
     disconnect: async () => {
+      detachDots?.();
       activeRuns.pauseNewRuns('bridge-disconnect');
       ownerRefresh.stop();
       knownChatsRefresh.stop();
@@ -545,6 +547,7 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     executor,
     pool,
   } = deps;
+  const incomingMode = controls.dots?.mode(msg.chatId);
   const preview = msg.content.length > 80 ? `${msg.content.slice(0, 80)}…` : msg.content;
   // Resolve scope (and underlying chat mode) once at intake — every
   // downstream consumer keys off these.
@@ -594,6 +597,14 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
     return;
   }
 
+  if (incomingMode === 'dots' && controls.dots && !msg.content.trim().startsWith('/')) {
+    try { await controls.dots.enqueue(msg, scope); }
+    catch (error) {
+      await channel.send(msg.chatId, { text: error instanceof Error ? error.message : 'Dots 收件失败，请稍后重试。' }, { replyTo: msg.messageId });
+    }
+    return;
+  }
+
   const commandContext: CommandContext = {
     channel,
     msg,
@@ -622,6 +633,12 @@ async function intakeMessage(deps: IntakeDeps): Promise<void> {
   if (handled) {
     const dropped = commandContext.preservePendingAfterCommand ? [] : pending.cancel(scope);
     log.info('intake', 'command', { scope, droppedPending: dropped.length });
+    return;
+  }
+
+  if (incomingMode === 'dots' && controls.dots) {
+    try { await controls.dots.enqueue(msg, scope); }
+    catch (error) { await channel.send(msg.chatId, { text: error instanceof Error ? error.message : 'Dots 收件失败。' }, { replyTo: msg.messageId }); }
     return;
   }
 
