@@ -63,7 +63,7 @@
   "devDependencies": {
     "@types/cross-spawn": "^6.0.6",
     "@types/graceful-fs": "^4.1.9",
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.6",
     "@types/proper-lockfile": "^4.1.4",
     "@types/qrcode": "^1.5.5",
     "@types/ws": "^8.18.2",
