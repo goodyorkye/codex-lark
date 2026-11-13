@@ -128,4 +128,50 @@ describe('desktop original-Dot text transport', () => {
     await h.bridge.tick(); h.advance(5000); await h.bridge.tick(); await h.bridge.tick();
     expect(h.channel.sent).toHaveLength(2); expect(JSON.stringify(h.channel.sent)).toContain('生成完毕'); expect(h.api.download).toHaveBeenCalledTimes(1);
   });
+  it('recovers a delegated late result before the next native input without copying the next answer or proactive notifications', async () => {
+    const h = await harness(); await h.bridge.select('chat-1', 'dots', 'ou_owner', 'chat-1');
+    await h.bridge.enqueue(message(), 'chat-1'); await h.bridge.tick(); await h.bridge.tick(); h.advance(5000); await h.bridge.tick(); await h.bridge.tick();
+    const first = (await h.api.messages())[0]!;
+    h.api.messages.mockResolvedValue([first,
+      { id: 'automation', account_user_id: identity.dotMemberId, content: { text: '无关的定时通知' }, message_metadata: { turn_trigger: 'automation' } },
+      { id: 'late-result', account_user_id: identity.dotMemberId, content: { text: '委派查询已完成，没有失败项目。' }, message_metadata: { turn_trigger: 'chatgpt_messaging' } },
+      { id: 'next-input', account_user_id: identity.ownerMemberId, content: { text: '下一条问题' } },
+      { id: 'next-answer', account_user_id: identity.dotMemberId, content: { text: '下一条问题的答复' }, message_metadata: { turn_trigger: 'chatgpt_messaging' } },
+    ]);
+    await h.bridge.select('chat-1', 'codex', 'ou_owner', 'chat-1');
+    await h.bridge.tick(); h.advance(5000); await h.bridge.tick();
+    expect(h.channel.sent).toHaveLength(2);
+    expect(h.channel.sent[1]).toEqual({ chatId: 'chat-1', content: { text: '🤖 Dots · 原小弟（原会话）\n\n委派查询已完成，没有失败项目。' }, options: { replyTo: 'om_source' } });
+    const state = JSON.parse(await readFile(join(h.dir, 'desktop-state.json'), 'utf8'));
+    expect(state.jobs[0]).toMatchObject({ phase: 'sent', followupClosed: true, deliveredMessageIds: ['native-answer', 'late-result'] });
+    await h.bridge.tick(); await h.bridge.tick(); expect(h.channel.sent).toHaveLength(2);
+  });
+  it('migrates saved 0.3.0 replies and deduplicates delayed attachments across restarts', async () => {
+    const h = await harness(); await h.bridge.select('chat-1', 'dots', 'ou_owner', 'chat-1');
+    await h.bridge.enqueue(message(), 'chat-1'); await h.bridge.tick(); await h.bridge.tick(); h.advance(5000); await h.bridge.tick(); await h.bridge.tick();
+    const first = (await h.api.messages())[0]!;
+    await h.bridge.close();
+    const path = join(h.dir, 'desktop-state.json'), state = JSON.parse(await readFile(path, 'utf8'));
+    delete state.jobs[0].answerMessageIds; delete state.jobs[0].deliveredMessageIds; await writeFileAtomic(path, JSON.stringify(state));
+    h.api.messages.mockResolvedValue([first, { id: 'late-file', account_user_id: identity.dotMemberId, content: { text: '这是稍后完成的文件', attachments: [{ type: 'file', file_id: 'generated-file' }] }, message_metadata: { turn_trigger: 'chatgpt_messaging' } }]);
+    const reopened = await DesktopDotsBridge.open(h.dir, 'app-test', { api: h.api, clock: h.clock }); cleanups.push(() => reopened.close()); reopened.attach(h.channel, () => 'ou_owner');
+    await reopened.tick(); h.advance(5000); await reopened.tick();
+    expect(h.channel.sent).toHaveLength(3); expect(h.api.download).toHaveBeenCalledTimes(1);
+    await reopened.close();
+    const again = await DesktopDotsBridge.open(h.dir, 'app-test', { api: h.api, clock: h.clock }); cleanups.push(() => again.close()); again.attach(h.channel, () => 'ou_owner');
+    await again.tick(); h.advance(5000); await again.tick(); expect(h.channel.sent).toHaveLength(3);
+    h.api.messages.mockResolvedValue([...await h.api.messages(), { id: 'another-result', account_user_id: identity.dotMemberId, content: { text: '另一条续答' }, message_metadata: { turn_trigger: 'chatgpt_messaging' } }]);
+    await again.tick(); h.advance(5000); await again.tick(); expect(h.channel.sent).toHaveLength(4);
+    expect(JSON.stringify(h.channel.sent[3])).toContain('另一条续答');
+  });
+  it('does not retry an uncertain Feishu continuation delivery or attach a later native conversation to it', async () => {
+    const h = await harness(); await h.bridge.select('chat-1', 'dots', 'ou_owner', 'chat-1');
+    await h.bridge.enqueue(message(), 'chat-1'); await h.bridge.tick(); await h.bridge.tick(); h.advance(5000); await h.bridge.tick(); await h.bridge.tick();
+    const first = (await h.api.messages())[0]!;
+    h.api.messages.mockResolvedValue([first, { id: 'late', account_user_id: identity.dotMemberId, content: { text: '晚到结果' }, message_metadata: { turn_trigger: 'chatgpt_messaging' } }]);
+    const send = vi.spyOn(h.channel, 'send').mockRejectedValueOnce(new Error('connection lost after send'));
+    await h.bridge.tick(); h.advance(5000); await h.bridge.tick(); expect(h.bridge.status().uncertain).toBe(1);
+    await h.bridge.tick(); await h.bridge.tick(); expect(send).toHaveBeenCalledTimes(2); // One attempt plus the explicit review notice.
+    expect(h.channel.sent).toHaveLength(2); expect(JSON.stringify(h.channel.sent[1])).toContain('结果不确定');
+  });
 });

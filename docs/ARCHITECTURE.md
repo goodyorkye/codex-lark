@@ -56,6 +56,8 @@ Inputs use a serial, source-bound durable queue with stable native request/idemp
 
 The native room-live HTTPS/SSE and authenticated WebSocket channels supply root-turn identity and completion, including active child work. A prior completed turn or a quiet progress message cannot finalize a new input. After completion and a short consistency window, source-bound native replies and file IDs are forwarded to the original Feishu message, including after returning to Codex. Background updates are excluded. Account changes, interleaved human input and uncertain delivery stop automatic association or resending.
 
+Delegated work can post a continuation after the root turn has already completed. Delivered inputs remain eligible for follow-up checks within their processing window until the next native human input. Native message IDs are persisted before subsequent deduplication; a stable continuation uses the same source-bound Feishu delivery path. At the next human input, only preceding replies are collected, then the earlier input is closed. A reply without explicit correlation that arrives beyond that boundary cannot be reliably attributed. Existing 0.3.0 deliveries are migrated only when the saved answer and file IDs match an exact prefix of the native replies.
+
 Private atomic `dots/desktop-state.json` stores the queue, text, transcripts, replies and file/resource IDs. Temporary input files are removed, and expiring file URLs and credentials are never persisted. Interrupted preparation can resume; interrupted native/Feishu sends require verification. Feishu ingress acknowledgement is not transactionally coupled to persistence. See [Dots](DOTS.md) for limits, recovery and real-account acceptance.
 
 ## Ownership rules

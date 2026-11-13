@@ -50,6 +50,8 @@ describe('native Dot attachment wire format', () => {
     await expect(api.send({ ...identity, principal: 'other:owner' }, 'text', 'request')).rejects.toThrow('账号已变化');
     http.body = { items: [], next_cursor: 'more' }; await expect(api.messages(identity, 'input')).rejects.toThrow('消息过多');
     expect(http.requests[0]!.url).toContain('limit=20');
+    http.body = { items: [{ id: 'next-human-input', account_user_id: 'owner' }], next_cursor: 'later-history' };
+    expect(await api.messages(identity, 'input')).toEqual([{ id: 'next-human-input', account_user_id: 'owner' }]);
     http.status = 500; http.body = { detail: 'do not expose provider body or credentials' };
     try { await api.send(identity, 'text', 'request'); throw new Error('expected failure'); }
     catch (error) { expect(error).toBeInstanceOf(DesktopDotError); expect((error as DesktopDotError).uncertain).toBe(true); expect((error as Error).message).not.toContain('provider body'); }

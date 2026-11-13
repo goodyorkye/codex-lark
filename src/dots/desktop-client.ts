@@ -125,7 +125,8 @@ export class DesktopDotClient implements DesktopDotApi {
   }
   async messages(identity: DesktopDotIdentity, after: string): Promise<DesktopDotMessage[]> {
     const result = (await this.call(`/messaging/rooms/${encodeURIComponent(identity.roomId)}/messages?${new URLSearchParams({ after, limit: '20' })}`, identity.principal)).data as { items?: DesktopDotMessage[]; next_cursor?: string | null };
-    if (!Array.isArray(result.items) || result.next_cursor || result.items.some(message => !message || typeof message.id !== 'string' || message.content?.text !== undefined && typeof message.content.text !== 'string')) throw new DesktopDotError('原会话消息过多或格式已变化，请在客户端核对，避免关联错误。');
+    if (!Array.isArray(result.items) || result.items.some(message => !message || typeof message.id !== 'string' || message.content?.text !== undefined && typeof message.content.text !== 'string')
+      || result.next_cursor && !result.items.some(message => !message.deleted_at && message.account_user_id === identity.ownerMemberId)) throw new DesktopDotError('原会话消息过多或格式已变化，请在客户端核对，避免关联错误。');
     return result.items;
   }
   async activity(identity: DesktopDotIdentity): Promise<DesktopDotActivity> {

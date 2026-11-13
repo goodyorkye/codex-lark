@@ -92,6 +92,8 @@ The navigation card includes **Switch to Dots / Return to Codex**. One bot serve
 
 Run `codex-lark dots init` and restart to enable the experimental **original Dot conversation** connection. It reuses the local ChatGPT Desktop login and forwards text, original images, files and audio into the same native room. Replies and generated image/file attachments return to Feishu. No Tunnel, custom MCP plugin or initial web setup is required.
 
+Since 0.3.1, the bridge also checks for delegated-task replies posted after the root turn ends. Native message IDs prevent duplicate delivery, and continuations reply to the original Feishu input even after returning to Codex or restarting. See the [Dots guide](docs/DOTS.md) for upgrade recovery and attribution limits.
+
 Voice transcription optionally uses an Aliyun Model Studio `DASHSCOPE_API_KEY`; missing configuration produces a Feishu setup reminder. No Python, offline model or separate speech program is needed. codex-lark does not synthesize speech. This feature serves one app-owner private chat and relies on internal client APIs. Live acceptance is complete on macOS; Windows original-Dot testing is still pending. See the [Dots setup and acceptance guide](docs/DOTS.md) (Chinese).
 
 ## Push completed task results

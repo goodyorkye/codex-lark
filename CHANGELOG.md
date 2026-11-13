@@ -4,6 +4,17 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-13
+
+### Fixed
+
+- Keep checking already-delivered Dot inputs for delayed delegated-task replies until the next native user input. Persist native message IDs to recover missing continuations and attachments across restarts without duplicating replies or including the next conversation's answer.
+- Recover existing 0.3.0 delivery records only when their saved payload matches the original reply prefix; uncertain Feishu sends still require verification instead of automatic retries.
+
+### Documentation
+
+- Explain delayed delegated-task replies, upgrade recovery and the attribution boundary at the next native user input in the Dots guide, troubleshooting guide and both READMEs.
+
 ## [0.3.0] - 2026-11-13
 
 ### Added

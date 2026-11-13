@@ -22,6 +22,14 @@ Press Ctrl+C and run `codex-lark` again. The terminal starts a new registration 
 
 Keep the bridge computer awake and confirm both OpenAI and Feishu/Lark are reachable from it. Check the foreground terminal and `~/.codex-lark/profiles/codex/logs/`. Use `codex-lark ps` to find an existing bridge process; duplicate processes are rejected intentionally.
 
+## Dot acknowledged a request, but its later result is missing in Feishu
+
+Update to **0.3.1 or later** and restart the same profile. In 0.3.0, a Dot could finish its root turn after delegating work, so the bridge delivered its acknowledgement but missed the later result. The fix keeps checking delivered inputs for continuations and persists native message IDs for deduplication.
+
+Existing configuration and bindings are retained. Within the original 24-hour processing window, an old delivery can recover automatically when its saved text and file IDs match the original reply prefix. Switching back to Codex does not disable that recovery. Uncertain sends require verification rather than an automatic retry; expired or disconnected records are not replayed.
+
+The next native human input ends the preceding input's attribution window. Results arriving beyond that boundary without explicit correlation still need to be read in the client. Automation notifications are excluded. See the [Dots guide](DOTS.md) for upgrade commands and recovery limits.
+
 ## A Desktop task is missing on the phone
 
 Send `/tasks` to refresh App Server history. Live Desktop mirroring additionally needs the current Desktop IPC endpoint (a Unix socket on macOS or named pipe on Windows). If a Desktop update changed it, disable IPC with `CODEX_LARK_DESKTOP_IPC=0`; history and bridge-started tasks should still work through App Server.

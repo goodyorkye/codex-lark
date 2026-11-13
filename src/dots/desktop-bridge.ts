@@ -5,7 +5,7 @@ import { writeFileAtomic } from '../platform/atomic-write';
 import { log } from '../core/logger';
 import type { DotsBackend, DotsChannel, DotsStatus } from './backend';
 import { privateDirectory, readPrivate } from './storage';
-import { DesktopDotClient, DesktopDotError, type DesktopDotApi, type DesktopDotIdentity } from './desktop-client';
+import { DesktopDotClient, DesktopDotError, type DesktopDotApi, type DesktopDotIdentity, type DesktopDotMessage } from './desktop-client';
 import { cleanInterruptedMediaReads, desktopAttachments, desktopMessageText, readDesktopSource, nativeMediaMime, type DesktopSourceAttachment } from './desktop-media';
 import { mediaName, validateOutput } from './outbound';
 import { aliyunAsr, type NativeAudioTranscriber } from './aliyun-asr';
@@ -18,6 +18,8 @@ interface Job {
   nativeMessageId?: string; answer?: string; settleAt?: number; error?: string; notice?: 'sending' | 'sent' | 'uncertain';
   attachments?: DesktopSourceAttachment[]; answerFiles?: string[];
   previousTurnId?: string | null;
+  answerMessageIds?: string[]; deliveredMessageIds?: string[]; followupClosed?: boolean;
+  followup?: { messageIds: string[]; answer: string; files: string[]; settleAt: number };
 }
 interface State { version: 1; appId: string; routes: Record<string, 'codex' | 'dots'>; binding?: Binding; jobs: Job[] }
 
@@ -32,6 +34,7 @@ export class DesktopDotsBridge implements DotsBackend {
   private flight?: Promise<void>;
   private timer?: NodeJS.Timeout;
   private closed = false;
+  private followupCursor?: string;
   private readonly abort = new AbortController();
   private constructor(readonly dir: string, readonly appId: string, private readonly api: DesktopDotApi, private readonly clock: () => number, private readonly asr: NativeAudioTranscriber) {
     this.state = { version: 1, appId, routes: {}, jobs: [] };
@@ -122,6 +125,50 @@ export class DesktopDotsBridge implements DotsBackend {
     void flight.finally(() => { if (this.flight === flight) this.flight = undefined; }).catch(() => {}); return flight;
   }
   private async update(id: string, values: Partial<Job>): Promise<void> { await this.change(next => { const job = next.jobs.find(job => job.id === id); if (job) Object.assign(job, values); }); }
+  /** A delegation can finish the root turn before its result is posted. Keep
+   * watching delivered inputs until the next native human input, and persist
+   * native message IDs so a delayed result is neither dropped nor sent twice. */
+  private async collectFollowup(binding: Binding, allowed: () => boolean): Promise<void> {
+    const candidates = this.state.jobs.filter(job => job.bindingId === binding.id && job.phase === 'sent' && job.nativeMessageId && !job.followupClosed && job.expires > this.clock());
+    if (!candidates.length) return;
+    const job = candidates[(candidates.findIndex(job => job.id === this.followupCursor) + 1) % candidates.length]!;
+    this.followupCursor = job.id;
+    try {
+      const messages = await this.api.messages(binding.identity, job.nativeMessageId!);
+      if (!allowed()) return;
+      const boundary = messages.findIndex(message => !message.deleted_at && message.account_user_id && message.account_user_id !== binding.identity.dotMemberId);
+      const replies = (boundary < 0 ? messages : messages.slice(0, boundary)).filter(message => this.isReply(message, binding.identity));
+      let delivered = job.deliveredMessageIds;
+      if (!delivered) {
+        // Upgrade existing 0.3.0 jobs only when their saved payload matches an
+        // exact prefix. Otherwise require review rather than duplicating it.
+        for (let count = 1; count <= replies.length; count++) {
+          const prefix = replies.slice(0, count), files = [...new Set(prefix.flatMap(message => message.content?.attachments ?? []).map(file => file.file_id))];
+          if (this.replyText(prefix) === (job.answer ?? '') && JSON.stringify(files) === JSON.stringify(job.answerFiles ?? [])) { delivered = prefix.map(message => message.id); break; }
+        }
+        if (!delivered) { await this.update(job.id, { phase: 'uncertain', error: '原会话已发送答复发生变化，无法核对续答去重，请检查客户端与飞书；不会重复发送。' }); return; }
+        await this.update(job.id, { deliveredMessageIds: delivered });
+      }
+      const fresh = replies.filter(message => !delivered.includes(message.id));
+      if (!fresh.length) {
+        if (boundary >= 0) await this.update(job.id, { followupClosed: true, followup: undefined });
+        return;
+      }
+      const answer = this.replyText(fresh), attachments = fresh.flatMap(message => message.content?.attachments ?? []);
+      if (attachments.some(file => file.type !== 'file' || !file.file_id) || attachments.length > 4) throw new Error('原 Dot 续答包含不支持的附件或超过 4 个附件，请在客户端查看。');
+      const messageIds = fresh.map(message => message.id), files = [...new Set(attachments.map(file => file.file_id))];
+      const previous = job.followup;
+      if (!previous || previous.answer !== answer || JSON.stringify(previous.messageIds) !== JSON.stringify(messageIds) || JSON.stringify(previous.files) !== JSON.stringify(files)) {
+        await this.update(job.id, { followup: { messageIds, answer, files, settleAt: this.clock() + 4000 } });
+      } else if (this.clock() >= previous.settleAt) {
+        await this.update(job.id, { phase: 'ready', answer, answerFiles: files, answerMessageIds: messageIds, followupClosed: boundary >= 0, followup: undefined });
+      }
+    } catch (error) { this.error = error instanceof Error ? error.message : '正在等待原会话续答恢复。'; }
+  }
+  private isReply(message: DesktopDotMessage, identity: DesktopDotIdentity): boolean {
+    return message.account_user_id === identity.dotMemberId && !message.deleted_at && message.message_metadata?.turn_trigger === 'chatgpt_messaging' && Boolean(message.content?.text || message.content?.attachments?.length);
+  }
+  private replyText(messages: DesktopDotMessage[]): string { return messages.map(message => message.content?.text ?? '').filter(Boolean).join('\n\n').slice(0, 20_000); }
   private async pump(): Promise<void> {
     const binding = this.state.binding, transport = this.transport;
     if (!binding || !transport || transport.owner() !== binding.ownerId) return;
@@ -136,7 +183,9 @@ export class DesktopDotsBridge implements DotsBackend {
       return;
     }
     if (jobs.some(job => job.phase === 'uncertain')) return;
-    const job = jobs.find(job => ['queued', 'waiting', 'ready'].includes(job.phase));
+    await this.collectFollowup(binding, allowed);
+    if (!allowed() || this.state.jobs.some(job => job.bindingId === binding.id && job.phase === 'uncertain')) return;
+    const job = this.state.jobs.find(job => job.bindingId === binding.id && ['queued', 'waiting', 'ready'].includes(job.phase));
     if (!job) return;
     if (job.expires <= this.clock()) { await this.update(job.id, { phase: 'failed', error: '超过 24 小时处理窗口，请重新发送；旧消息不会自动重发。' }); return; }
     if (job.phase === 'queued') {
@@ -198,14 +247,14 @@ export class DesktopDotsBridge implements DotsBackend {
         if (messages.some(message => message.account_user_id && message.account_user_id !== binding.identity.dotMemberId && !message.deleted_at)) {
           await this.update(job.id, { phase: 'uncertain', error: '等待答复时原会话出现了其他人的新输入，无法可靠关联本条飞书答复，请在客户端查看。' }); return;
         }
-        const replies = messages.filter(message => message.account_user_id === binding.identity.dotMemberId && !message.deleted_at && message.message_metadata?.turn_trigger === 'chatgpt_messaging');
-        const answer = replies.map(message => message.content?.text ?? '').filter(Boolean).join('\n\n').slice(0, 20_000);
+        const replies = messages.filter(message => this.isReply(message, binding.identity));
+        const answer = this.replyText(replies), answerMessageIds = replies.map(message => message.id);
         const attachments = replies.flatMap(message => message.content?.attachments ?? []);
         if (attachments.some(a => a.type !== 'file' || typeof a.file_id !== 'string' || !a.file_id) || attachments.length > 4) {
           await this.update(job.id, { phase: 'failed', error: '原 Dot 答复包含不支持的附件或超过 4 个附件，请在客户端查看。' }); return;
         }
         const answerFiles = [...new Set(attachments.map(a => a.file_id))];
-        if ((answer || answerFiles.length) && (answer !== job.answer || JSON.stringify(answerFiles) !== JSON.stringify(job.answerFiles ?? []))) await this.update(job.id, { answer, answerFiles, settleAt: this.clock() + 4000 });
+        if ((answer || answerFiles.length) && (answer !== job.answer || JSON.stringify(answerFiles) !== JSON.stringify(job.answerFiles ?? []) || JSON.stringify(answerMessageIds) !== JSON.stringify(job.answerMessageIds))) await this.update(job.id, { answer, answerFiles, answerMessageIds, settleAt: this.clock() + 4000 });
         else if ((answer || answerFiles.length) && job.settleAt !== undefined && this.clock() >= job.settleAt
           && !activity.active && activity.turnId && activity.turnId !== job.previousTurnId && ['completed', 'failed', 'interrupted'].includes(activity.status ?? '')) await this.update(job.id, { phase: 'ready' });
         this.error = undefined;
@@ -235,7 +284,7 @@ export class DesktopDotsBridge implements DotsBackend {
         if (!allowed()) return;
         await transport.channel.send(binding.chatId, file.image ? { image: { source: file.bytes } } : { file: { source: file.bytes, fileName: file.name } }, { replyTo: job.sourceId });
       }
-      await this.update(job.id, { phase: 'sent' }); log.info('dots-desktop', 'reply-sent', { jobId: job.id, sourceId: job.sourceId, files: files.length });
+      await this.update(job.id, { phase: 'sent', deliveredMessageIds: [...new Set([...(job.deliveredMessageIds ?? []), ...(job.answerMessageIds ?? [])])] }); log.info('dots-desktop', 'reply-sent', { jobId: job.id, sourceId: job.sourceId, files: files.length });
     }
     catch { await this.update(job.id, { phase: 'uncertain', error: '飞书发送结果不确定，请核对原消息；不会自动重发。' }); }
   }
